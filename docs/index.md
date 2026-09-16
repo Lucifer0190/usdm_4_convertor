@@ -1,33 +1,44 @@
 # USDM4-Assure
 
-**Convert clinical trial protocol PDFs into conformant CDISC USDM 4.0 JSON — with an
-Assurance layer engineered to surpass the market accuracy ceiling (~89% field / ~76% SoA).**
+**Convert clinical trial protocol PDFs into conformant CDISC USDM 4.0 JSON — with a
+grounding layer that cites every field back to its source, and an assurance layer that
+turns confidence into a statistically-bounded auto-accept decision.**
 
 USDM4-Assure is a Python pipeline that reads a protocol document and produces a
 structurally-valid USDM 4.0 study spanning metadata, study design, eligibility,
 objectives, interventions, and the Schedule of Activities — with every extracted
 field provenance-tagged, cross-checked, and triaged for human review.
 
-## Why it exists
+## Why it exists — and what changed in v0.3
 
-Published protocol-to-USDM systems plateau at ~89% field-level accuracy because they
-share four structural weaknesses. USDM4-Assure attacks each one directly:
+A literature review of the published protocol-extraction and document-AI research
+([full findings](../PLAN.md)) corrected two assumptions the project started with: there is
+no single "~89%/~76% market ceiling" to beat (the two figures aren't a matched benchmark),
+and independent-looking extraction paths are not nearly as independent as assumed
+(measured cross-model error correlation is 0.74–0.82). The honest published state of the
+art is ~89% field-level accuracy with a **silent-omission** failure mode on long
+documents — a confident, well-formed result that is quietly missing data.
 
-| Market weakness | Our counter-mechanism |
+USDM4-Assure's v0.3 design targets that failure mode directly:
+
+| What actually breaks published systems | Our counter-mechanism |
 |---|---|
-| Single-path extraction | **Multi-method ensemble** — ≥2 independent paths per field |
-| Uncalibrated confidence | **Grounded verifier + calibrated confidence** |
-| SoA rebuilt from flat text | **Vision-first geometry** (read the grid, don't reconstruct it) |
-| Static systems | **Closed-loop learning** from reviewer corrections |
+| Silent omission on long/wide schemas | **Sharded extraction** + **completeness accounting** (expected vs found) |
+| Ungrounded values | **Mandatory verbatim quote**, resolved to page/coordinates by code, never by the model |
+| Table structure destroyed, especially across pages | **Specialist grid model + VLM content pass** + a custom multi-page stitcher |
+| Dishonest confidence | **Multi-signal calibrated confidence** + a **conformal bound** on auto-accepted fields |
 
-See [Architecture](architecture.md) for how these map onto the code.
+See [Architecture](architecture.md) for how these map onto the code, and
+[`../DESIGN.md`](../DESIGN.md) for the full design with citations.
 
 ## The accuracy contract
 
 "100% accuracy for clinical use" is a **human-in-the-loop certification guarantee**,
 not zero-touch output. The pipeline maximizes *un-reviewed* accuracy, makes confidence
 trustworthy so review is surgical, and blocks non-conformant output at the CORE gate.
-The clinical guarantee comes from the Assurance layer + conformance gate + SME sign-off.
+The clinical guarantee comes from Grounding + Assurance + the conformance gate + SME
+sign-off — not from a claim of "full-proof" conversion, which the published evidence does
+not support for any system.
 
 ## Quickstart
 
@@ -42,21 +53,26 @@ conda run -n usdm4 python -m usdm4_assure.cli convert-full data/fixtures/protoco
 ```
 
 No API keys and no real data are required to run the pipeline: the extraction ensemble
-uses independent deterministic methods, and an LLM member (Claude) joins automatically
-when `ANTHROPIC_API_KEY` is set. See [Development](development.md) for full setup.
+uses independent deterministic methods, and an LLM member joins automatically via
+**OpenRouter** when a key is present (Claude direct also works). See
+[Development](development.md) for full setup.
 
 ## Documentation map
 
-- **[Architecture](architecture.md)** — the seven layers and the market-beating design.
+- **[Architecture](architecture.md)** — the ten layers and the evidence behind each one.
 - **[Pipeline & contracts](pipeline.md)** — how data flows and the types each layer speaks.
-- **[Module reference](modules.md)** — what every package does.
+- **[Module reference](modules.md)** — what every package does, current and planned.
 - **[Conformance & limitations](conformance.md)** — the validation gates, current results,
   and the honest analysis of what's gated by the upstream assembler.
 - **[Development](development.md)** — setup, testing, and environment gotchas.
-- **[References](references.md)** — standards, tools, and prior art.
+- **[References](references.md)** — standards, tools, and prior art, with the accuracy
+  claims each source actually supports.
+- **[`../PLAN.md`](../PLAN.md)** — the full evidence review and phased roadmap.
+- **[`../DESIGN.md`](../DESIGN.md)** — the complete v0.3 technical design.
 
 ## Status
 
-A working, tested proof-of-concept: one protocol PDF → a structurally-valid USDM 4.0
-study across six domains, 18 passing tests, fully Dockerized. Not yet CORE-clean — see
-[Conformance](conformance.md) for exactly why and what remains.
+A working proof-of-concept — one protocol PDF → a structurally-valid USDM 4.0 study across
+six domains, 18 passing tests, fully Dockerized — currently mid-revision to the v0.3
+architecture. See [`../PLAN.md`](../PLAN.md) §6 for the phased roadmap and exit criteria,
+and [Conformance](conformance.md) for exactly where CORE-clean output stands today.
