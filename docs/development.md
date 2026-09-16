@@ -27,6 +27,11 @@ but they unlock additional capability.
 | `ANTHROPIC_API_KEY` | Fallback direct-Anthropic path, used only if no OpenRouter key is set. |
 | `CDISC_LIBRARY_API_KEY` | The official CDISC CORE gate (`convert-full --core`) and controlled-terminology lookups. Free to register at the CDISC Library. |
 
+> **v0.3 note:** logprobs are never load-bearing anywhere in this pipeline. OpenRouter
+> accepts a `logprobs` parameter, but not every routed provider returns it — Anthropic does
+> not — so a design that depends on it breaks silently on a model swap. See
+> [`../DESIGN.md`](../DESIGN.md) §4 and [`../PLAN.md`](../PLAN.md) for why.
+
 The LLM resolution order is OpenRouter → direct Anthropic → stub (see `llm/router.py`).
 With a key present, the Claude member joins the Assurance ensemble as an additional
 independent path, which lifts agreement and auto-accept (e.g. metadata auto-accept went
@@ -98,7 +103,8 @@ tests/              pytest suite (ground-truth checks)
 spikes/             fixtures (make_*.py), the spike log, and scratch probes (_*.py)
 docs/               this documentation
 docker/             Dockerfile; compose at repo root
-DESIGN.md           the finalized architecture (design layer)
+DESIGN.md           the v0.3 technical design (architecture layer)
+PLAN.md             the evidence review and phased roadmap behind v0.3
 ```
 
 ## Documentation site (optional)
