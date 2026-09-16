@@ -4,6 +4,17 @@ This page documents the validation gates, the current results on the reference f
 and an honest analysis of what is and isn't achievable today — including the parts gated
 by the upstream assembler rather than by our extraction.
 
+> **v0.3 note — the assembler's real-world reliability is unmeasured, not proven broken.**
+> Earlier internal notes cited a spike run in which zero of 235 real protocols in a test
+> corpus reached a successful assembly. That figure is **stale**: the currently vendored
+> `usdm4` source already contains fixes for two of the bugs that spike's findings doc lists
+> as open (`AmendmentsAssembler` no longer crashes on `None` enrollment; `AssemblerInput.soa`
+> now accepts a list of timelines, not just one). We do not currently know the real pass
+> rate on the pinned version we build on. **Phase 0 of [`../PLAN.md`](../PLAN.md) re-measures
+> it before any architecture decision leans on a number** — see that page for the plan, and
+> [`../DESIGN.md`](../DESIGN.md) §2 for how L7 hedges this with a per-section
+> `usdm4.builder` fallback and a reported "assembler reliance ratio" either way.
+
 ## The three gates
 
 `validate/gate.py` runs up to three gates against an assembled study:
@@ -87,4 +98,9 @@ Even CDISC's own USDM 4.0 sample fails 18 d4k rules. "Zero findings" is therefor
 right bar for a single protocol in isolation. The right targets, per the project design,
 are a **CORE pass rate against a pinned rule set + version**, with rules split into
 *extraction-relevant* vs *narrative/display*, and a documented human-review step for the
-remainder. See [References](references.md).
+remainder.
+
+Also pin the **errata revision**, not just the model and rule-set versions: 27 USDM v4.0
+errata have already been published, some flipping a rule's severity between ERROR and
+WARNING. Treat rule severity as data pulled from a pinned source, not a hardcoded constant.
+See [References](references.md) and [`../PLAN.md`](../PLAN.md) §1.
