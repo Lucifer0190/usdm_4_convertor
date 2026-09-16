@@ -1,0 +1,37 @@
+[project]
+name = "usdm4-assure"
+version = "0.1.0"
+description = "AI pipeline converting clinical protocols to conformant USDM 4.0, with an Assurance layer engineered to surpass the market accuracy ceiling."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"   # SPIKE FINDING: cdisc-rules-engine (via usdm4) has no py3.13 wheel yet
+dependencies = [
+  "usdm4>=0.28.0",         # data4knowledge USDM 4.0 pydantic model + validate + CORE facade
+  "pydantic>=2.7",
+  "pymupdf>=1.24",          # PDF text + coords + page-image render
+  "pdfplumber>=0.11",       # table-candidate detection
+  "anthropic>=0.40",        # direct Anthropic SDK (fallback path)
+  "requests>=2.31",         # OpenRouter gateway (default LLM path)
+  "python-dotenv>=1.0",     # load .env (OPEN_ROUTER_KEY)
+  "typer>=0.12",            # CLI
+  "rich>=13",
+  "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+# CORE engine ships transitively via usdm4 -> cdisc-rules-engine (USDM4().validate_core()).
+dev = ["pytest>=8", "ruff>=0.6"]
+docs = ["mkdocs-material>=9.5"]
+
+[project.scripts]
+usdm4 = "usdm4_assure.cli:app"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

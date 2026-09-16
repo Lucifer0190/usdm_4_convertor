@@ -1,0 +1,393 @@
+<title>USDM4-Assure</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root{
+  --ground:#f5f7f9; --surface:#ffffff; --surface-2:#eef1f5; --surface-3:#e6ebf1;
+  --ink:#0c1526; --ink-2:#3b4658; --muted:#697487; --border:#dce2ea; --border-2:#c7d0dc;
+  --accent:#0891b2; --accent-ink:#065f76; --accent-soft:#e0f5fa;
+  --verified:#0f9d76; --verified-soft:#e2f6ee;
+  --risk:#d5304f; --risk-soft:#fdeef0;
+  --caution:#b26a08; --caution-soft:#fbf1e0;
+  --moat-a:#0891b2; --moat-b:#0e7490;
+  --shadow:0 1px 2px rgba(12,21,38,.06),0 4px 16px rgba(12,21,38,.06);
+  --shadow-lg:0 8px 40px rgba(12,21,38,.14);
+  --mono:ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --maxw:920px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#070b14; --surface:#0e1523; --surface-2:#131c2d; --surface-3:#18233a;
+    --ink:#eef2f8; --ink-2:#bcc7d6; --muted:#7c899d; --border:#1d2839; --border-2:#2a3a52;
+    --accent:#25b9d6; --accent-ink:#8fe1f0; --accent-soft:#0c2b34;
+    --verified:#34d399; --verified-soft:#0c2a22;
+    --risk:#fb7185; --risk-soft:#2c0f16;
+    --caution:#fbbf24; --caution-soft:#2a1f08;
+    --moat-a:#22b8d6; --moat-b:#0e7490;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.35);
+    --shadow-lg:0 10px 44px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#070b14; --surface:#0e1523; --surface-2:#131c2d; --surface-3:#18233a;
+  --ink:#eef2f8; --ink-2:#bcc7d6; --muted:#7c899d; --border:#1d2839; --border-2:#2a3a52;
+  --accent:#25b9d6; --accent-ink:#8fe1f0; --accent-soft:#0c2b34;
+  --verified:#34d399; --verified-soft:#0c2a22;
+  --risk:#fb7185; --risk-soft:#2c0f16;
+  --caution:#fbbf24; --caution-soft:#2a1f08;
+  --moat-a:#22b8d6; --moat-b:#0e7490;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.35);
+  --shadow-lg:0 10px 44px rgba(0,0,0,.5);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--ground);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+.mono{font-family:var(--mono)}
+.eyebrow{font-family:var(--mono);font-size:.7rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-ink)}
+h1,h2,h3{text-wrap:balance;line-height:1.15;letter-spacing:-.02em}
+a{color:var(--accent);text-decoration:none}
+code{font-family:var(--mono);font-size:.85em;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:.05em .38em;color:var(--accent-ink)}
+
+/* ---- top bar ---- */
+.topbar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.topbar-inner{max-width:var(--maxw);margin:0 auto;padding:.7rem 24px;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.brand{display:flex;align-items:center;gap:.6rem;font-family:var(--mono);font-size:.78rem;font-weight:600;letter-spacing:.02em}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.brand .sub{color:var(--muted);font-weight:500}
+.toggle{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:20px;padding:.3rem .7rem;cursor:pointer;transition:color .2s,border-color .2s}
+.toggle:hover{color:var(--accent);border-color:var(--accent)}
+.toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---- hero ---- */
+.hero{padding:4.5rem 0 3rem;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;top:-40%;right:-10%;width:60%;height:120%;background:radial-gradient(ellipse at center,var(--accent-soft),transparent 70%);opacity:.6;pointer-events:none}
+.hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:3rem;align-items:center;position:relative}
+.hero h1{font-size:clamp(2.1rem,5vw,3.2rem);font-weight:800;margin:.9rem 0 .4rem}
+.hero h1 .u{color:var(--accent)}
+.hero .lede{font-size:1.06rem;color:var(--ink-2);max-width:34ch;margin-bottom:1.6rem}
+.hero .meta{display:flex;gap:1.6rem;flex-wrap:wrap;font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.hero .meta b{display:block;color:var(--ink);font-size:.82rem;font-weight:600;margin-top:.15rem;letter-spacing:.02em}
+
+/* layer stack visual */
+.stack{display:flex;flex-direction:column;gap:6px}
+.layer{position:relative;border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:.7rem .9rem;box-shadow:var(--shadow);display:flex;align-items:center;gap:.7rem;transition:transform .25s ease,box-shadow .25s ease}
+.layer:hover{transform:translateX(4px)}
+.layer .lnum{font-family:var(--mono);font-size:.66rem;color:var(--muted);width:1.4rem;flex-shrink:0}
+.layer .lname{font-size:.82rem;font-weight:650}
+.layer .ltag{font-family:var(--mono);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-left:auto}
+.layer.moat{border-color:transparent;background:linear-gradient(120deg,var(--moat-a),var(--moat-b));color:#fff;box-shadow:0 6px 24px color-mix(in srgb,var(--accent) 45%,transparent);transform:scale(1.03)}
+.layer.moat .lnum,.layer.moat .ltag{color:rgba(255,255,255,.8)}
+.layer.moat .lname{font-weight:750}
+.layer.dim{opacity:.62}
+
+/* ---- section scaffold ---- */
+section{padding:3rem 0}
+.sec-head{margin-bottom:1.8rem}
+.sec-head h2{font-size:clamp(1.5rem,3vw,2rem);font-weight:800;margin:.5rem 0 .35rem}
+.sec-head p{color:var(--muted);font-size:.95rem;max-width:60ch}
+.divider{height:1px;background:var(--border);border:none}
+
+/* thesis pairing */
+.pair{display:grid;grid-template-columns:1fr auto 1fr;gap:0;align-items:stretch;margin-bottom:.8rem}
+.pair-head{display:grid;grid-template-columns:1fr auto 1fr;gap:0;margin-bottom:.6rem}
+.pair-head span{font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600;padding:0 .2rem}
+.ph-fail{color:var(--risk)} .ph-win{color:var(--accent-ink);text-align:right}
+.cell{padding:1rem 1.1rem;border:1px solid var(--border);background:var(--surface)}
+.cell.fail{border-left:3px solid var(--risk);border-radius:9px 0 0 9px;background:var(--risk-soft)}
+.cell.win{border-right:3px solid var(--accent);border-radius:0 9px 9px 0;background:var(--accent-soft)}
+.cell .t{font-weight:700;font-size:.9rem;margin-bottom:.2rem}
+.cell.fail .t{color:var(--risk)} .cell.win .t{color:var(--accent-ink)}
+.cell .d{font-size:.83rem;color:var(--ink-2);line-height:1.55}
+.arrowcol{display:flex;align-items:center;justify-content:center;width:44px;flex-shrink:0;color:var(--accent);font-family:var(--mono);font-weight:700}
+.arrowcol .a{background:var(--surface);border:1px solid var(--border);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:.9rem;box-shadow:var(--shadow)}
+
+/* math callout */
+.mathbox{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:11px;padding:1.6rem 1.8rem;box-shadow:var(--shadow);margin-top:1.4rem}
+.mathbox .row{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;font-family:var(--mono);font-size:.85rem;margin-bottom:1rem}
+.chip{font-family:var(--mono);font-weight:600;font-size:.8rem;padding:.25rem .6rem;border-radius:7px;letter-spacing:.01em;white-space:nowrap}
+.chip.low{background:var(--risk-soft);color:var(--risk);border:1px solid color-mix(in srgb,var(--risk) 35%,transparent)}
+.chip.hi{background:var(--verified-soft);color:var(--verified);border:1px solid color-mix(in srgb,var(--verified) 35%,transparent)}
+.chip.mid{background:var(--accent-soft);color:var(--accent-ink);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent)}
+.mathbox p{font-size:.92rem;color:var(--ink-2);margin-top:.3rem}
+.mathbox p strong{color:var(--ink)}
+
+/* cards grid */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:1.2rem 1.3rem;box-shadow:var(--shadow);transition:transform .2s,border-color .2s}
+.card:hover{transform:translateY(-3px);border-color:var(--border-2)}
+.card .k{font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:.5rem}
+.card h3{font-size:.98rem;font-weight:700;margin-bottom:.4rem}
+.card p{font-size:.85rem;color:var(--ink-2);line-height:1.55}
+.card.hl{border-color:color-mix(in srgb,var(--accent) 40%,transparent);background:linear-gradient(180deg,var(--accent-soft),var(--surface))}
+
+/* SoA flow */
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem;counter-reset:s}
+.step{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem;position:relative;box-shadow:var(--shadow)}
+.step::before{counter-increment:s;content:counter(s);position:absolute;top:.7rem;right:.85rem;font-family:var(--mono);font-size:1.4rem;font-weight:800;color:var(--surface-3);line-height:1}
+.step .st{font-size:.86rem;font-weight:700;margin-bottom:.3rem;color:var(--accent-ink)}
+.step .sd{font-size:.79rem;color:var(--ink-2);line-height:1.5}
+
+/* table */
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:11px;box-shadow:var(--shadow)}
+table{width:100%;border-collapse:collapse;font-size:.86rem;min-width:520px}
+thead th{background:var(--surface-2);text-align:left;padding:.7rem 1rem;font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);font-weight:600;border-bottom:1px solid var(--border)}
+tbody td{padding:.72rem 1rem;border-bottom:1px solid var(--border);color:var(--ink-2);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody td:first-child{color:var(--ink);font-weight:600}
+tbody tr{background:var(--surface)}
+.pill{font-family:var(--mono);font-size:.66rem;font-weight:600;padding:.15rem .5rem;border-radius:20px;letter-spacing:.02em;white-space:nowrap}
+.pill.claude{background:var(--accent-soft);color:var(--accent-ink)}
+.pill.ext{background:var(--surface-3);color:var(--ink-2)}
+.pill.slm{background:var(--caution-soft);color:var(--caution)}
+
+/* phased / spike */
+.rail{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.phase{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:1.3rem 1.4rem;box-shadow:var(--shadow)}
+.phase .p{font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:.5rem}
+.phase h3{font-size:1rem;margin-bottom:.5rem}
+.phase ul{list-style:none;display:flex;flex-direction:column;gap:.35rem}
+.phase li{font-size:.83rem;color:var(--ink-2);padding-left:1.1rem;position:relative;line-height:1.45}
+.phase li::before{content:"";position:absolute;left:0;top:.5rem;width:6px;height:6px;border-radius:2px;background:var(--accent)}
+.spike{margin-top:1.2rem;background:linear-gradient(120deg,var(--moat-a),var(--moat-b));color:#fff;border-radius:13px;padding:1.6rem 1.8rem;box-shadow:var(--shadow-lg)}
+.spike .p{font-family:var(--mono);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.82);margin-bottom:.5rem}
+.spike h3{color:#fff;font-size:1.15rem;margin-bottom:.7rem}
+.spike ol{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.4rem}
+.spike li{font-size:.87rem;color:rgba(255,255,255,.92);line-height:1.5}
+.spike .kick{margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.22);font-size:.87rem;color:#fff}
+.spike .kick b{font-weight:700}
+
+.note{font-size:.82rem;color:var(--muted);font-style:italic;margin-top:1.1rem}
+footer{border-top:1px solid var(--border);padding:2rem 0 3rem;margin-top:1rem}
+footer p{font-size:.76rem;color:var(--muted);line-height:1.6}
+
+/* reveal */
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .55s ease,transform .55s ease}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}.layer,.card{transition:none}}
+
+@media (max-width:760px){
+  .hero-grid{grid-template-columns:1fr;gap:2rem}
+  .flow{grid-template-columns:1fr 1fr}
+  .rail{grid-template-columns:1fr}
+  .pair,.pair-head{grid-template-columns:1fr}
+  .cell.fail{border-radius:9px 9px 0 0;border-left:3px solid var(--risk)}
+  .cell.win{border-radius:0 0 9px 9px;border-right:1px solid var(--border);border-bottom:3px solid var(--accent)}
+  .arrowcol{width:auto;padding:.15rem 0}.arrowcol .a{transform:rotate(90deg)}
+  .pair-head{display:none}
+}
+</style>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="dot"></span>USDM4-Assure&nbsp;<span class="sub">/ Hexaware HTL</span></div>
+    <button class="toggle" id="tg" aria-label="Toggle color theme">Theme</button>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">Finalized System Architecture · v0.2</span>
+      <h1>Beating the <span class="u">89%</span> ceiling.</h1>
+      <p class="lede">An AI pipeline that converts clinical protocols into conformant USDM 4.0 — engineered to surpass every published system by never trusting a single extraction path.</p>
+      <div class="meta">
+        <div>Market ceiling<b>~89% field · ~76% SoA</b></div>
+        <div>Our lever<b>Assurance layer</b></div>
+        <div>Base model<b>Claude, tiered</b></div>
+      </div>
+    </div>
+    <div class="stack" aria-label="Seven-layer architecture stack">
+      <div class="layer dim"><span class="lnum">01</span><span class="lname">Foundation</span><span class="ltag">ingest · RAG</span></div>
+      <div class="layer dim"><span class="lnum">02</span><span class="lname">Extraction</span><span class="ltag">7 domains + SoA</span></div>
+      <div class="layer moat"><span class="lnum">03</span><span class="lname">Assurance — the moat</span><span class="ltag">ensemble · verify</span></div>
+      <div class="layer dim"><span class="lnum">04</span><span class="lname">Integrity</span><span class="ltag">UUIDs · CORE</span></div>
+      <div class="layer dim"><span class="lnum">05</span><span class="lname">Certification</span><span class="ltag">SME sign-off</span></div>
+      <div class="layer dim"><span class="lnum">06</span><span class="lname">Learning</span><span class="ltag">closed loop</span></div>
+      <div class="layer dim"><span class="lnum">07</span><span class="lname">Data</span><span class="ltag">graph · Phase 2</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section class="reveal">
+  <div class="sec-head">
+    <span class="eyebrow">The thesis</span>
+    <h2>The whole market fails the same four ways</h2>
+    <p>Banting Health, MITRE ProtocolMiner (22/29), Protocol2USDM — all plateau for identical structural reasons. Each of our four core mechanisms targets one of them directly. That mapping <em>is</em> the design.</p>
+  </div>
+
+  <div class="pair-head">
+    <span class="ph-fail">Why the market plateaus</span><span></span><span class="ph-win">Our counter-mechanism</span>
+  </div>
+
+  <div class="pair">
+    <div class="cell fail"><div class="t">Single-path extraction</div><div class="d">One extractor per field — so its error becomes the system's error, with nothing to catch it.</div></div>
+    <div class="arrowcol"><span class="a">→</span></div>
+    <div class="cell win"><div class="t">Multi-method ensemble</div><div class="d">Every field extracted by ≥2 independent paths. Agreement auto-accepts; disagreement routes to review.</div></div>
+  </div>
+  <div class="pair">
+    <div class="cell fail"><div class="t">Uncalibrated confidence</div><div class="d">Reviewers can't see which fields are risky, so residual errors slip straight through human review.</div></div>
+    <div class="arrowcol"><span class="a">→</span></div>
+    <div class="cell win"><div class="t">Grounded verifier + calibration</div><div class="d">A critic model checks each value against its source span; confidence is measured, so triage is surgical.</div></div>
+  </div>
+  <div class="pair">
+    <div class="cell fail"><div class="t">SoA rebuilt from flat text</div><div class="d">Linearizing the PDF destroys merged cells and multilevel headers — the #1 Schedule-of-Activities failure.</div></div>
+    <div class="arrowcol"><span class="a">→</span></div>
+    <div class="cell win"><div class="t">Vision-first geometry</div><div class="d">Grid structure read from the page image deterministically; the LLM only labels — it never reconstructs the table.</div></div>
+  </div>
+  <div class="pair">
+    <div class="cell fail"><div class="t">Static systems</div><div class="d">No competitor learns from the SME's corrections — the same mistakes recur on every protocol, forever.</div></div>
+    <div class="arrowcol"><span class="a">→</span></div>
+    <div class="cell win"><div class="t">Closed-loop learning</div><div class="d">Every correction becomes a few-shot example, then SLM training data. Un-reviewed accuracy rises per protocol.</div></div>
+  </div>
+
+  <div class="mathbox">
+    <div class="row">
+      <span class="chip low">2 paths @ ~89%</span>
+      <span class="mono" style="color:var(--muted)">agree on ~80–85% of fields</span>
+      <span class="chip mid">→</span>
+      <span class="chip hi">~97–99% precision on the agreed set</span>
+    </div>
+    <p><strong>The accuracy math.</strong> When two independent extractors agree, both must make the <em>same</em> mistake to fool the system — so precision on the agreed set jumps well above either path alone. The ~15–20% they disagree on is exactly what a human should see. <strong>The SME reviews less and catches more.</strong> We don't win with a better model — we win by measuring our own uncertainty honestly.</p>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section class="reveal">
+  <div class="sec-head">
+    <span class="eyebrow">Assurance layer · the moat</span>
+    <h2>Three mechanisms nobody else ships</h2>
+    <p>Candidate entities from the extractors flow through here and come out scored and triaged. This layer is the reason the pipeline exceeds the ceiling — it is Phase-1 core, not a later nicety.</p>
+  </div>
+  <div class="cards">
+    <div class="card hl"><div class="k">4.1 Ensemble</div><h3>Two independent paths per field</h3><p>Prose → Claude RAG + a second-family model. SoA → text + vision. Numeric/timing/dose → self-consistency voting (sample N, take majority) because those carry the highest clinical risk.</p></div>
+    <div class="card hl"><div class="k">4.2 Verifier</div><h3>A grounded critic pass</h3><p>A separate call asks: “is value V supported by source span S?” — grounded in retrieved text, never memory. <code>unsupported</code> is forced to review regardless of agreement. The dedicated hallucination catch.</p></div>
+    <div class="card hl"><div class="k">4.3 Confidence</div><h3>Calibrated, not guessed</h3><p>Confidence = f(agreement, verifier verdict, retrieval score, code status), calibrated on the eval set so “90%” means ~90% correct. That is what makes the review UI's triage trustworthy.</p></div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section class="reveal">
+  <div class="sec-head">
+    <span class="eyebrow">Safety-critical module</span>
+    <h2>The Schedule of Activities sub-pipeline</h2>
+    <p>A wrong test at a wrong time point is a protocol deviation — a GCP event. So the SoA never routes through the prose extractor. Vision reads geometry first; semantics come second.</p>
+  </div>
+  <div class="flow">
+    <div class="step"><div class="st">Geometry</div><div class="sd">Multimodal model returns the grid from the page image: header hierarchy and merged-cell spans, explicitly.</div></div>
+    <div class="step"><div class="st">Values</div><div class="sd">Cell values pulled from the layout-parsed table text — the deterministic path.</div></div>
+    <div class="step"><div class="st">Cross-check</div><div class="sd">Reconcile vision vs text per cell: <code>both</code> / <code>text-only</code> / <code>vision-only</code> / <code>none</code>. Disagreements surfaced, never auto-resolved.</div></div>
+    <div class="step"><div class="st">Build</div><div class="sd">Emit ScheduledActivityInstance, ISO-8601 Timing windows, Condition for footnote-gated cells, TransitionRule for cyclic logic.</div></div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section class="reveal">
+  <div class="sec-head">
+    <span class="eyebrow">Model orchestration</span>
+    <h2>Claude-primary, tiered thinking, ensemble-diverse</h2>
+    <p>The router picks model and thinking budget per task. A second family appears only where error <em>independence</em> is the point — running the same model twice is not an ensemble.</p>
+  </div>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Task</th><th>Model + thinking</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Narrow / high-volume</td><td><span class="pill claude">Claude Haiku</span></td><td>Term → search string, classification. Cheap, no extended thinking.</td></tr>
+        <tr><td>Prose extraction (C1–C6)</td><td><span class="pill claude">Claude Sonnet</span></td><td>Reasoning over scattered fields, light thinking budget.</td></tr>
+        <tr><td>SoA · reconcile · verify</td><td><span class="pill claude">Claude Opus + ext. thinking</span></td><td>Hardest reasoning, highest clinical risk.</td></tr>
+        <tr><td>Ensemble second path</td><td><span class="pill ext">Gemini-Vertex / GPT-5</span></td><td>Different family = independent errors. That is the entire point.</td></tr>
+        <tr><td>Narrow tasks · Phase 2</td><td><span class="pill slm">Fine-tuned SLM 8B</span></td><td>On-prem for HIPAA data residency; trained on SME corrections.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Gemini only via Vertex AI enterprise BLOCK_NONE. All prompts version-controlled — data4knowledge ran 60+ versions to reach production; a prompt change is a potential accuracy regression.</p>
+</section>
+
+<hr class="divider">
+
+<section class="reveal">
+  <div class="sec-head">
+    <span class="eyebrow">Build strategy</span>
+    <h2>Fork the ecosystem — add what no one has</h2>
+    <p>Two mature open-source bases give us the plumbing on day one, so our effort goes entirely into the Assurance and Learning layers that constitute the differentiator.</p>
+  </div>
+  <div class="cards">
+    <div class="card"><div class="k">Extraction base</div><h3>Panikos / Protocol2USDM</h3><p>Already does PDF parsing, vision SoA, multi-model orchestration (Claude/Gemini/GPT), USDM v4.0 serialization. Our Foundation + Extraction baseline.</p></div>
+    <div class="card"><div class="k">Plumbing base</div><h3>data4knowledge libs</h3><p>Pydantic USDM model, CDISC CORE validation wiring, Excel↔USDM, HTML render, Neo4j loader. Our Integrity + Data layers.</p></div>
+    <div class="card hl"><div class="k">What we add</div><h3>Assurance + Learning</h3><p>Ensemble, grounded verifier, calibrated confidence, closed-loop correction capture. No competitor ships these — this is the moat.</p></div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section class="reveal">
+  <div class="sec-head">
+    <span class="eyebrow">Delivery plan</span>
+    <h2>Phased, and de-risked by a spike</h2>
+    <p>Dockerized from day one: the PoC runs locally via <code>docker compose</code>; the same image deploys anywhere.</p>
+  </div>
+  <div class="rail">
+    <div class="phase">
+      <div class="p">Phase 1 · PoC · 6–8 weeks</div>
+      <h3>The differentiated spine</h3>
+      <ul>
+        <li>Foundation + Extraction (C1–C6, SoA)</li>
+        <li><b>Full Assurance layer</b> — the differentiator, not deferred</li>
+        <li>Integrity gates: UUID registry + pydantic + CORE</li>
+        <li>Thin certification UI + eval harness</li>
+        <li>Eligibility as free text; cloud Claude, tiered</li>
+        <li>Target: <b>exceed 89% field / 76% SoA</b>, calibrated</li>
+      </ul>
+    </div>
+    <div class="phase">
+      <div class="p">Phase 2 · Scale</div>
+      <h3>Depth & governance</h3>
+      <ul>
+        <li>Estimand + Amendment extraction</li>
+        <li>SLM fine-tuning + on-prem path</li>
+        <li>Neo4j graph → SDTM automation</li>
+        <li>Full web review UI</li>
+        <li>Closed-loop learning at scale</li>
+        <li>GxP validation package</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="spike">
+    <div class="p">First move · 1–2 days</div>
+    <h3>The spike — ground every assumption before writing pipeline code</h3>
+    <ol>
+      <li>Load CDISC DDF-RA example instances into the data4knowledge pydantic model → confirm they validate.</li>
+      <li>Run the CORE engine against them locally, in Docker → confirm the gate works and violations are readable.</li>
+      <li>Run Protocol2USDM on one public protocol PDF → see its raw output and <em>exactly where it stops</em>. That defines what Assurance must add.</li>
+      <li>Stand up the <code>docker compose</code> skeleton — app + CORE + Neo4j placeholder.</li>
+    </ol>
+    <div class="kick"><b>Green light from the spike</b> = the whole design is grounded in runnable reality. Then we build the ingest → assurance → validate spine on one protocol end-to-end, and only then scale to the 3–5 PoC protocols.</div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><b>USDM4-Assure</b> — finalized architecture v0.2 · companion to the USDM 4.0 executive briefing. Full build spec in <code>DESIGN.md</code>.</p>
+    <p>Sources: Panikos/Protocol2USDM · data4knowledge (usdm, usdm_data, ddf) · CDISC DDF-RA, usdm_api, cdisc-rules-engine · Banting Health arXiv 2602.00052 · MITRE ProtocolMiner · PHUSE ML08. Accuracy figures carry their published scope caveats.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var tg=document.getElementById('tg');
+  function cur(){var e=document.documentElement.getAttribute('data-theme');if(e)return e;return matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';}
+  tg.addEventListener('click',function(){var n=cur()==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);});
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.12});
+    document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+  }else{document.querySelectorAll('.reveal').forEach(function(el){el.classList.add('in');});}
+})();
+</script>

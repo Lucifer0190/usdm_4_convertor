@@ -1,0 +1,214 @@
+{
+  "study": {
+    "id": "FAKE-UUID",
+    "name": "Study",
+    "description": "Test Study",
+    "label": "Test Study",
+    "versions": [
+      {
+        "id": "StudyVersion_1",
+        "extensionAttributes": [],
+        "versionIdentifier": "1",
+        "rationale": "To be provided",
+        "documentVersionIds": [
+          "StudyDefinitionDocumentVersion_1"
+        ],
+        "dateValues": [
+          {
+            "id": "GovernanceDate_1",
+            "extensionAttributes": [],
+            "name": "D_APPROVE",
+            "label": "Design Approval",
+            "description": "Design approval date",
+            "type": {
+              "id": "Code_7",
+              "extensionAttributes": [],
+              "code": "C71476",
+              "codeSystem": "http://www.cdisc.org",
+              "codeSystemVersion": "2026-03-27",
+              "decode": "Approval Date",
+              "instanceType": "Code"
+            },
+            "dateValue": "2006-06-01",
+            "geographicScopes": [
+              {
+                "id": "GeographicScope_1",
+                "extensionAttributes": [],
+                "type": {
+                  "id": "Code_6",
+                  "extensionAttributes": [],
+                  "code": "C68846",
+                  "codeSystem": "http://www.cdisc.org",
+                  "codeSystemVersion": "2026-03-27",
+                  "decode": "Global",
+                  "instanceType": "Code"
+                },
+                "code": null,
+                "instanceType": "GeographicScope"
+              }
+            ],
+            "instanceType": "GovernanceDate"
+          }
+        ],
+        "amendments": [],
+        "businessTherapeuticAreas": [],
+        "studyIdentifiers": [
+          {
+            "id": "StudyIdentifier_1",
+            "extensionAttributes": [],
+            "text": "SPONSOR-1234",
+            "scopeId": "Organization_1",
+            "instanceType": "StudyIdentifier"
+          }
+        ],
+        "referenceIdentifiers": [],
+        "studyDesigns": [],
+        "titles": [
+          {
+            "id": "StudyTitle_1",
+            "extensionAttributes": [],
+            "text": "Test Study",
+            "type": {
+              "id": "Code_2",
+              "extensionAttributes": [],
+              "code": "C207616",
+              "codeSystem": "http://www.cdisc.org",
+              "codeSystemVersion": "2026-03-27",
+              "decode": "Official Study Title",
+              "instanceType": "Code"
+            },
+            "instanceType": "StudyTitle"
+          }
+        ],
+        "eligibilityCriterionItems": [],
+        "narrativeContentItems": [],
+        "abbreviations": [],
+        "roles": [],
+        "organizations": [
+          {
+            "id": "Organization_1",
+            "extensionAttributes": [],
+            "name": "Sponsor",
+            "label": null,
+            "type": {
+              "id": "Code_3",
+              "extensionAttributes": [],
+              "code": "C54149",
+              "codeSystem": "http://www.cdisc.org",
+              "codeSystemVersion": "2026-03-27",
+              "decode": "Drug Company",
+              "instanceType": "Code"
+            },
+            "identifierScheme": "To be provided",
+            "identifier": "To be provided",
+            "legalAddress": null,
+            "managedSites": [],
+            "instanceType": "Organization"
+          }
+        ],
+        "studyInterventions": [],
+        "administrableProducts": [],
+        "medicalDevices": [],
+        "productOrganizationRoles": [],
+        "biomedicalConcepts": [],
+        "bcCategories": [],
+        "bcSurrogates": [],
+        "dictionaries": [],
+        "conditions": [],
+        "notes": [],
+        "instanceType": "StudyVersion"
+      }
+    ],
+    "documentedBy": [
+      {
+        "id": "StudyDefinitionDocument_1",
+        "extensionAttributes": [],
+        "name": "PROTOCOL DOCUMENT",
+        "label": "Protocol Document",
+        "description": "The entire protocol document",
+        "language": {
+          "id": "Code_1",
+          "extensionAttributes": [],
+          "code": "en",
+          "codeSystem": "ISO 639-1",
+          "codeSystemVersion": "2007",
+          "decode": "English",
+          "instanceType": "Code"
+        },
+        "type": {
+          "id": "Code_5",
+          "extensionAttributes": [],
+          "code": "C70817",
+          "codeSystem": "http://www.cdisc.org",
+          "codeSystemVersion": "2026-03-27",
+          "decode": "Study Protocol",
+          "instanceType": "Code"
+        },
+        "templateName": "Sponsor",
+        "versions": [
+          {
+            "id": "StudyDefinitionDocumentVersion_1",
+            "extensionAttributes": [],
+            "version": "1",
+            "status": {
+              "id": "Code_4",
+              "extensionAttributes": [],
+              "code": "C25425",
+              "codeSystem": "http://www.cdisc.org",
+              "codeSystemVersion": "2026-03-27",
+              "decode": "Approval",
+              "instanceType": "Code"
+            },
+            "dateValues": [
+              {
+                "id": "GovernanceDate_1",
+                "extensionAttributes": [],
+                "name": "D_APPROVE",
+                "label": "Design Approval",
+                "description": "Design approval date",
+                "type": {
+                  "id": "Code_7",
+                  "extensionAttributes": [],
+                  "code": "C71476",
+                  "codeSystem": "http://www.cdisc.org",
+                  "codeSystemVersion": "2026-03-27",
+                  "decode": "Approval Date",
+                  "instanceType": "Code"
+                },
+                "dateValue": "2006-06-01",
+                "geographicScopes": [
+                  {
+                    "id": "GeographicScope_1",
+                    "extensionAttributes": [],
+                    "type": {
+                      "id": "Code_6",
+                      "extensionAttributes": [],
+                      "code": "C68846",
+                      "codeSystem": "http://www.cdisc.org",
+                      "codeSystemVersion": "2026-03-27",
+                      "decode": "Global",
+                      "instanceType": "Code"
+                    },
+                    "code": null,
+                    "instanceType": "GeographicScope"
+                  }
+                ],
+                "instanceType": "GovernanceDate"
+              }
+            ],
+            "contents": [],
+            "notes": [],
+            "instanceType": "StudyDefinitionDocumentVersion"
+          }
+        ],
+        "childIds": [],
+        "notes": [],
+        "instanceType": "StudyDefinitionDocument"
+      }
+    ],
+    "instanceType": "Study"
+  },
+  "usdmVersion": "4.0.0",
+  "systemName": "Python USDM4 Package",
+  "systemVersion": "0.29.0"
+}

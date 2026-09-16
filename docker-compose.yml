@@ -1,0 +1,34 @@
+# USDM4-Assure local stack. `docker compose up` runs the PoC anywhere.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: usdm4-assure:dev
+    volumes:
+      - ./data:/app/data          # input PDFs + output JSON
+      - ./src:/app/src            # live code during dev
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    depends_on:
+      - neo4j
+
+  # CORE conformance engine — pinned separately; run as a one-shot validation gate.
+  # Placeholder: the spike wires cdisc-rules-engine here once the CLI invocation is proven.
+  core:
+    image: python:3.12-slim
+    working_dir: /work
+    volumes:
+      - ./data:/work/data
+    command: ["sleep", "infinity"]   # replaced by CORE engine invocation in spike step 2
+    profiles: ["validate"]
+
+  # Data layer (Phase 2) — property graph for downstream automation. Placeholder now.
+  neo4j:
+    image: neo4j:5-community
+    environment:
+      - NEO4J_AUTH=neo4j/usdm4assure
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    profiles: ["graph"]

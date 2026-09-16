@@ -1,0 +1,39 @@
+# Optional docs site config. The docs/ Markdown reads fine on any Git host without this.
+# To serve locally:  pip install mkdocs-material && mkdocs serve
+# Note: MkDocs core has slowed in 2026 — check the maintained fork your plugins target.
+site_name: USDM4-Assure
+site_description: >-
+  Convert clinical trial protocol PDFs into conformant CDISC USDM 4.0, with an
+  Assurance layer engineered to surpass the market accuracy ceiling.
+docs_dir: docs
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Pipeline & contracts: pipeline.md
+  - Module reference: modules.md
+  - Conformance & limitations: conformance.md
+  - Development: development.md
+  - References: references.md
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
