@@ -188,23 +188,26 @@ footer p{font-size:.76rem;color:var(--muted);line-height:1.6}
 <header class="hero">
   <div class="wrap hero-grid">
     <div>
-      <span class="eyebrow">Finalized System Architecture · v0.2</span>
-      <h1>Beating the <span class="u">89%</span> ceiling.</h1>
-      <p class="lede">An AI pipeline that converts clinical protocols into conformant USDM 4.0 — engineered to surpass every published system by never trusting a single extraction path.</p>
+      <span class="eyebrow">Technical Design · v0.3 · evidence-based</span>
+      <h1>Grounded, not just <span class="u">confident</span>.</h1>
+      <p class="lede">An AI pipeline that converts clinical protocols into conformant USDM 4.0 — every field cited to its source, calibrated, and bounded, because no published system (including this one) can claim more.</p>
       <div class="meta">
-        <div>Market ceiling<b>~89% field · ~76% SoA</b></div>
-        <div>Our lever<b>Assurance layer</b></div>
-        <div>Base model<b>Claude, tiered</b></div>
+        <div>Published SOTA<b>~89% field · silent omission at scale</b></div>
+        <div>Our lever<b>Grounding + Assurance</b></div>
+        <div>Gateway<b>OpenRouter, multi-model</b></div>
       </div>
     </div>
-    <div class="stack" aria-label="Seven-layer architecture stack">
-      <div class="layer dim"><span class="lnum">01</span><span class="lname">Foundation</span><span class="ltag">ingest · RAG</span></div>
-      <div class="layer dim"><span class="lnum">02</span><span class="lname">Extraction</span><span class="ltag">7 domains + SoA</span></div>
-      <div class="layer moat"><span class="lnum">03</span><span class="lname">Assurance — the moat</span><span class="ltag">ensemble · verify</span></div>
-      <div class="layer dim"><span class="lnum">04</span><span class="lname">Integrity</span><span class="ltag">UUIDs · CORE</span></div>
-      <div class="layer dim"><span class="lnum">05</span><span class="lname">Certification</span><span class="ltag">SME sign-off</span></div>
-      <div class="layer dim"><span class="lnum">06</span><span class="lname">Learning</span><span class="ltag">closed loop</span></div>
-      <div class="layer dim"><span class="lnum">07</span><span class="lname">Data</span><span class="ltag">graph · Phase 2</span></div>
+    <div class="stack" aria-label="Ten-layer architecture stack">
+      <div class="layer dim"><span class="lnum">L0</span><span class="lname">Substrate</span><span class="ltag">PyMuPDF text + bboxes</span></div>
+      <div class="layer dim"><span class="lnum">L1</span><span class="lname">Layout &amp; tables</span><span class="ltag">Docling ∥ MinerU2.5</span></div>
+      <div class="layer dim"><span class="lnum">L2</span><span class="lname">SoA stitcher</span><span class="ltag">the risk centre</span></div>
+      <div class="layer dim"><span class="lnum">L3</span><span class="lname">Routing</span><span class="ltag">fingerprint · scopes</span></div>
+      <div class="layer dim"><span class="lnum">L4</span><span class="lname">Extraction</span><span class="ltag">sharded, two-pass</span></div>
+      <div class="layer moat"><span class="lnum">L5</span><span class="lname">Grounding — the moat</span><span class="ltag">verbatim quote</span></div>
+      <div class="layer moat"><span class="lnum">L6</span><span class="lname">Assurance — the moat</span><span class="ltag">conformal bound</span></div>
+      <div class="layer dim"><span class="lnum">L7</span><span class="lname">Assembly</span><span class="ltag">usdm4 + fallback</span></div>
+      <div class="layer dim"><span class="lnum">L8</span><span class="lname">Validation</span><span class="ltag">pydantic · d4k · CORE</span></div>
+      <div class="layer dim"><span class="lnum">L9</span><span class="lname">Certification</span><span class="ltag">Part 11 audit</span></div>
     </div>
   </div>
 </header>
@@ -214,43 +217,43 @@ footer p{font-size:.76rem;color:var(--muted);line-height:1.6}
 <section class="reveal">
   <div class="sec-head">
     <span class="eyebrow">The thesis</span>
-    <h2>The whole market fails the same four ways</h2>
-    <p>Banting Health, MITRE ProtocolMiner (22/29), Protocol2USDM — all plateau for identical structural reasons. Each of our four core mechanisms targets one of them directly. That mapping <em>is</em> the design.</p>
+    <h2>The real failure mode is silence, not error</h2>
+    <p>Published systems don't mostly return <em>wrong</em> values — they return confident, well-formed, schema-valid studies that are quietly <em>missing</em> rows, visits and criteria. On long documents frontier models hold high precision while recall falls to ~50%. Nothing looks broken. In a regulated workflow that is the worst possible failure, and every mechanism below targets it.</p>
   </div>
 
   <div class="pair-head">
-    <span class="ph-fail">Why the market plateaus</span><span></span><span class="ph-win">Our counter-mechanism</span>
+    <span class="ph-fail">What actually breaks</span><span></span><span class="ph-win">Our counter-mechanism</span>
   </div>
 
   <div class="pair">
-    <div class="cell fail"><div class="t">Single-path extraction</div><div class="d">One extractor per field — so its error becomes the system's error, with nothing to catch it.</div></div>
+    <div class="cell fail"><div class="t">Silent omission</div><div class="d">~50% recall at high precision on 358-page docs; 0% valid output at 369 schema fields. Data vanishes without a trace.</div></div>
     <div class="arrowcol"><span class="a">→</span></div>
-    <div class="cell win"><div class="t">Multi-method ensemble</div><div class="d">Every field extracted by ≥2 independent paths. Agreement auto-accepts; disagreement routes to review.</div></div>
+    <div class="cell win"><div class="t">Sharding + completeness accounting</div><div class="d">&lt;40 fields per call over routed windows, and every domain reconciles expected vs found counts. A gap becomes a finding, not a silent pass.</div></div>
   </div>
   <div class="pair">
-    <div class="cell fail"><div class="t">Uncalibrated confidence</div><div class="d">Reviewers can't see which fields are risky, so residual errors slip straight through human review.</div></div>
+    <div class="cell fail"><div class="t">Ungrounded values</div><div class="d">A plausible value with no real source — and model-emitted page numbers that were never in the document.</div></div>
     <div class="arrowcol"><span class="a">→</span></div>
-    <div class="cell win"><div class="t">Grounded verifier + calibration</div><div class="d">A critic model checks each value against its source span; confidence is measured, so triage is surgical.</div></div>
+    <div class="cell win"><div class="t">Mandatory verbatim quote</div><div class="d">The model emits a quote; <em>our code</em> resolves it to page, character offset and bbox. A failed substring match is a hard reject. 93% vs 19% exact match, published.</div></div>
   </div>
   <div class="pair">
-    <div class="cell fail"><div class="t">SoA rebuilt from flat text</div><div class="d">Linearizing the PDF destroys merged cells and multilevel headers — the #1 Schedule-of-Activities failure.</div></div>
+    <div class="cell fail"><div class="t">Table structure destroyed</div><div class="d">Merged cells and multilevel headers lost — and clinical SoAs routinely span 3–6 pages, which <em>no</em> available tool stitches correctly.</div></div>
     <div class="arrowcol"><span class="a">→</span></div>
-    <div class="cell win"><div class="t">Vision-first geometry</div><div class="d">Grid structure read from the page image deterministically; the LLM only labels — it never reconstructs the table.</div></div>
+    <div class="cell win"><div class="t">Specialist grid + VLM content</div><div class="d">A 1.2B specialist beats frontier VLMs on structure; VLMs win on cell text. Split the job — plus a purpose-built multi-page stitcher.</div></div>
   </div>
   <div class="pair">
-    <div class="cell fail"><div class="t">Static systems</div><div class="d">No competitor learns from the SME's corrections — the same mistakes recur on every protocol, forever.</div></div>
+    <div class="cell fail"><div class="t">Dishonest confidence</div><div class="d">Reviewers can't see which fields are risky. Verbalized confidence scores 0.692 AUC — worse than logprobs, which are themselves weak.</div></div>
     <div class="arrowcol"><span class="a">→</span></div>
-    <div class="cell win"><div class="t">Closed-loop learning</div><div class="d">Every correction becomes a few-shot example, then SLM training data. Un-reviewed accuracy rises per protocol.</div></div>
+    <div class="cell win"><div class="t">Calibrated + conformally bounded</div><div class="d">Fused multi-signal confidence (0.928 AUC published), then a conformal threshold giving a provable bound on error among auto-accepted fields.</div></div>
   </div>
 
   <div class="mathbox">
     <div class="row">
-      <span class="chip low">2 paths @ ~89%</span>
-      <span class="mono" style="color:var(--muted)">agree on ~80–85% of fields</span>
+      <span class="chip low">retracted in v0.3</span>
+      <span class="mono" style="color:var(--muted)">“2 paths @ 89% → 97–99% precision”</span>
       <span class="chip mid">→</span>
-      <span class="chip hi">~97–99% precision on the agreed set</span>
+      <span class="chip hi">agreement is a feature, not a guarantee</span>
     </div>
-    <p><strong>The accuracy math.</strong> When two independent extractors agree, both must make the <em>same</em> mistake to fool the system — so precision on the agreed set jumps well above either path alone. The ~15–20% they disagree on is exactly what a human should see. <strong>The SME reviews less and catches more.</strong> We don't win with a better model — we win by measuring our own uncertainty honestly.</p>
+    <p><strong>The accuracy math, corrected.</strong> v0.2 claimed that two independent paths agreeing implies ~97–99% precision. That assumes independent errors. Measured cross-model error correlation is <strong>ρ = 0.74–0.82</strong> — three to five times higher than human forecasters — and <strong>48% of model mistakes replicate across families</strong>. Errors from a shared parsing stage are ρ = 1.0 across every downstream model. Unanimous agreement on a <em>wrong</em> answer is common, and systematically so on the hard fields. So ensemble agreement stays — as <strong>one input feature to a calibrated confidence model</strong>, never as a precision claim.</p>
   </div>
 </section>
 
@@ -258,31 +261,33 @@ footer p{font-size:.76rem;color:var(--muted);line-height:1.6}
 
 <section class="reveal">
   <div class="sec-head">
-    <span class="eyebrow">Assurance layer · the moat</span>
-    <h2>Three mechanisms nobody else ships</h2>
-    <p>Candidate entities from the extractors flow through here and come out scored and triaged. This layer is the reason the pipeline exceeds the ceiling — it is Phase-1 core, not a later nicety.</p>
+    <span class="eyebrow">Grounding + Assurance · the moat</span>
+    <h2>Three mechanisms, each earned by evidence</h2>
+    <p>Candidates flow through here and come out cited, scored and triaged. These are Phase-1 core, not later niceties — and each replaces a v0.2 mechanism that the literature did not support.</p>
   </div>
   <div class="cards">
-    <div class="card hl"><div class="k">4.1 Ensemble</div><h3>Two independent paths per field</h3><p>Prose → Claude RAG + a second-family model. SoA → text + vision. Numeric/timing/dose → self-consistency voting (sample N, take majority) because those carry the highest clinical risk.</p></div>
-    <div class="card hl"><div class="k">4.2 Verifier</div><h3>A grounded critic pass</h3><p>A separate call asks: “is value V supported by source span S?” — grounded in retrieved text, never memory. <code>unsupported</code> is forced to review regardless of agreement. The dedicated hallucination catch.</p></div>
-    <div class="card hl"><div class="k">4.3 Confidence</div><h3>Calibrated, not guessed</h3><p>Confidence = f(agreement, verifier verdict, retrieval score, code status), calibrated on the eval set so “90%” means ~90% correct. That is what makes the review UI's triage trustworthy.</p></div>
+    <div class="card hl"><div class="k">L5 · Grounding</div><h3>Verbatim quote, resolved in code</h3><p>Every field carries a quote that <em>our code</em> locates in the PDF by exact substring match, then resolves to page, character offset and bbox. A miss is a hard reject. The model never emits coordinates — that is hallucination-prone and unsupported by any benchmark.</p></div>
+    <div class="card hl"><div class="k">L6 · Completeness</div><h3>Expected vs found, every domain</h3><p>Visit count from the design section reconciled against SoA columns; arm count against cells; activity rows against footnote references. Because the dominant failure is <em>omission</em>, counting what should be there is as important as checking what is.</p></div>
+    <div class="card hl"><div class="k">L6 · Confidence</div><h3>Fused, calibrated, bounded</h3><p>A fitted model over grounding-quality features, entailment, cross-model agreement and field type — 0.928 AUC published, versus 0.705 for logprobs. Then a conformal threshold: under exchangeability, error among auto-accepted fields is provably ≤ α.</p></div>
   </div>
+  <p class="note">Marginal, not conditional — the conformal bound holds across all fields on average, not within every field type. With ~4 protocols we can support a global bound; per-class guarantees need ~20+. We say exactly that and no more.</p>
 </section>
 
 <hr class="divider">
 
 <section class="reveal">
   <div class="sec-head">
-    <span class="eyebrow">Safety-critical module</span>
+    <span class="eyebrow">Safety-critical module · the risk centre</span>
     <h2>The Schedule of Activities sub-pipeline</h2>
-    <p>A wrong test at a wrong time point is a protocol deviation — a GCP event. So the SoA never routes through the prose extractor. Vision reads geometry first; semantics come second.</p>
+    <p>A wrong test at a wrong time point is a protocol deviation — a GCP event. So the SoA never routes through the prose extractor. And because clinical SoAs routinely span 3–6 pages, the stitching step is <strong>custom-built</strong>: Docling does not merge cross-page tables and MinerU drops content on continuation pages — both open issues.</p>
   </div>
   <div class="flow">
-    <div class="step"><div class="st">Geometry</div><div class="sd">Multimodal model returns the grid from the page image: header hierarchy and merged-cell spans, explicitly.</div></div>
-    <div class="step"><div class="st">Values</div><div class="sd">Cell values pulled from the layout-parsed table text — the deterministic path.</div></div>
-    <div class="step"><div class="st">Cross-check</div><div class="sd">Reconcile vision vs text per cell: <code>both</code> / <code>text-only</code> / <code>vision-only</code> / <code>none</code>. Disagreements surfaced, never auto-resolved.</div></div>
-    <div class="step"><div class="st">Build</div><div class="sd">Emit ScheduledActivityInstance, ISO-8601 Timing windows, Condition for footnote-gated cells, TransitionRule for cyclic logic.</div></div>
+    <div class="step"><div class="st">Stitch</div><div class="sd">Match column-header signatures across consecutive pages, detect “(continued)” cues, reconcile column counts. <strong>Hard-fail loudly</strong> rather than silently emitting two tables.</div></div>
+    <div class="step"><div class="st">Grid</div><div class="sd">A specialist table model owns the structure. At 1.2B it beats Gemini-2.5-Pro and a 72B VLM on TEDS — structure is not a job for a generalist.</div></div>
+    <div class="step"><div class="st">Content</div><div class="sd">A vision-LLM fills cell text <em>against the fixed grid</em>, per region. MLLMs win on cell content; they lose on structure. Never one model for both.</div></div>
+    <div class="step"><div class="st">Re-derive</div><div class="sd">Mechanically re-derive the mark matrix from the PDF as an independent cross-check, then emit ScheduledActivityInstance, Timing windows and footnote Conditions.</div></div>
   </div>
+  <p class="note">Gated by a hand-labelled set of 30–50 real multi-page SoAs before it is trusted. The re-derivation pattern is adopted from <code>kerfors/soa2usdm</code> (MIT, PHUSE 2025).</p>
 </section>
 
 <hr class="divider">
@@ -290,22 +295,23 @@ footer p{font-size:.76rem;color:var(--muted);line-height:1.6}
 <section class="reveal">
   <div class="sec-head">
     <span class="eyebrow">Model orchestration</span>
-    <h2>Claude-primary, tiered thinking, ensemble-diverse</h2>
-    <p>The router picks model and thinking budget per task. A second family appears only where error <em>independence</em> is the point — running the same model twice is not an ensemble.</p>
+    <h2>OpenRouter gateway, SLM-tiered by evidence</h2>
+    <p>One gateway, many models, roles declared in config so any model is swappable without code changes. Small models are used wherever published benchmarks say they are good enough — which is more places than intuition suggests.</p>
   </div>
   <div class="tablewrap">
     <table>
-      <thead><tr><th>Task</th><th>Model + thinking</th><th>Why</th></tr></thead>
+      <thead><tr><th>Job</th><th>Model</th><th>Evidence</th></tr></thead>
       <tbody>
-        <tr><td>Narrow / high-volume</td><td><span class="pill claude">Claude Haiku</span></td><td>Term → search string, classification. Cheap, no extended thinking.</td></tr>
-        <tr><td>Prose extraction (C1–C6)</td><td><span class="pill claude">Claude Sonnet</span></td><td>Reasoning over scattered fields, light thinking budget.</td></tr>
-        <tr><td>SoA · reconcile · verify</td><td><span class="pill claude">Claude Opus + ext. thinking</span></td><td>Hardest reasoning, highest clinical risk.</td></tr>
-        <tr><td>Ensemble second path</td><td><span class="pill ext">Gemini-Vertex / GPT-5</span></td><td>Different family = independent errors. That is the entire point.</td></tr>
-        <tr><td>Narrow tasks · Phase 2</td><td><span class="pill slm">Fine-tuned SLM 8B</span></td><td>On-prem for HIPAA data residency; trained on SME corrections.</td></tr>
+        <tr><td>Text layer, layout, table grids</td><td><span class="pill ext">PyMuPDF · Docling · MinerU2.5</span></td><td>Deterministic. A 1.2B specialist beats Gemini-2.5-Pro on table TEDS.</td></tr>
+        <tr><td>Entity spotting (drug, lab, visit, AE)</td><td><span class="pill slm">GLiNER-BioMed</span></td><td>59.8% zero-shot / 70.4% 10-shot F1, peer-reviewed; +39–568% throughput.</td></tr>
+        <tr><td>Quote-supports-value check</td><td><span class="pill slm">MiniCheck-FT5 · 770M</span></td><td>74.7% balanced accuracy ≈ GPT-4's 75.3%, at ~400× lower cost. Local, no egress.</td></tr>
+        <tr><td>Section routing / classification</td><td><span class="pill slm">small classifier</span></td><td>Structured generation measurably <em>helps</em> classification tasks.</td></tr>
+        <tr><td>High-volume narrow fields</td><td><span class="pill slm">QLoRA 8B (once labelled)</span></td><td>90.0% exact match — statistically non-inferior to a second human annotator.</td></tr>
+        <tr><td>SoA cell content · estimands · amendments</td><td><span class="pill claude">Frontier via OpenRouter</span></td><td>Cross-section reasoning; small models sit far below the 44.9% F1 long-doc ceiling.</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="note">Gemini only via Vertex AI enterprise BLOCK_NONE. All prompts version-controlled — data4knowledge ran 60+ versions to reach production; a prompt change is a potential accuracy regression.</p>
+  <p class="note">Logprobs are never load-bearing — OpenRouter accepts the parameter but not every provider honours it (Anthropic returns none), so a logprob-dependent design breaks silently on a model swap. Cross-family verification only, on the uncertain subset; never let the extracting model judge its own output (self-preference bias up to +90%). If sampling for self-consistency, vote in YAML or free text then emit JSON once — JSON grammars collapse answer diversity from 41% to 64% modal share. All prompts version-controlled and hashed into the audit trail.</p>
 </section>
 
 <hr class="divider">
@@ -313,14 +319,15 @@ footer p{font-size:.76rem;color:var(--muted);line-height:1.6}
 <section class="reveal">
   <div class="sec-head">
     <span class="eyebrow">Build strategy</span>
-    <h2>Fork the ecosystem — add what no one has</h2>
-    <p>Two mature open-source bases give us the plumbing on day one, so our effort goes entirely into the Assurance and Learning layers that constitute the differentiator.</p>
+    <h2>Assemble on the ecosystem — add what no one has</h2>
+    <p>Mature open-source bases give us the plumbing and, crucially, the <em>ground truth</em> on day one — so our effort goes into the Grounding and Assurance layers that constitute the differentiator.</p>
   </div>
   <div class="cards">
-    <div class="card"><div class="k">Extraction base</div><h3>Panikos / Protocol2USDM</h3><p>Already does PDF parsing, vision SoA, multi-model orchestration (Claude/Gemini/GPT), USDM v4.0 serialization. Our Foundation + Extraction baseline.</p></div>
-    <div class="card"><div class="k">Plumbing base</div><h3>data4knowledge libs</h3><p>Pydantic USDM model, CDISC CORE validation wiring, Excel↔USDM, HTML render, Neo4j loader. Our Integrity + Data layers.</p></div>
-    <div class="card hl"><div class="k">What we add</div><h3>Assurance + Learning</h3><p>Ensemble, grounded verifier, calibrated confidence, closed-loop correction capture. No competitor ships these — this is the moat.</p></div>
+    <div class="card"><div class="k">Plumbing base</div><h3>data4knowledge <code>usdm4</code></h3><p>Pydantic USDM 4.0 model, the Assembler, the d4k rule library, offline controlled terminology, the CORE facade. GPL-3.0 — fine for internal use, recorded as a deliberate decision.</p></div>
+    <div class="card"><div class="k">Ground truth</div><h3><code>usdm_data</code> · ~20 studies</h3><p>Real studies mapped to USDM and CORE-validated, each traceable to a public NCT protocol PDF. This is our eval seed — it replaces hand-labelling four local PDFs from scratch.</p></div>
+    <div class="card hl"><div class="k">What we add</div><h3>Grounding + Assurance</h3><p>Verbatim citation with code-resolved coordinates, completeness accounting, fused calibrated confidence, a conformal bound, and a Part 11 audit trail. No published system ships these together.</p></div>
   </div>
+  <p class="note">Also adopted: <code>kerfors/soa2usdm</code> (MIT, PHUSE 2025) for the SoA mark-matrix re-derivation pattern — permissively licensed, so its approach can be used directly rather than merely imitated.</p>
 </section>
 
 <hr class="divider">
@@ -328,46 +335,46 @@ footer p{font-size:.76rem;color:var(--muted);line-height:1.6}
 <section class="reveal">
   <div class="sec-head">
     <span class="eyebrow">Delivery plan</span>
-    <h2>Phased, and de-risked by a spike</h2>
+    <h2>Phased, and de-risked by re-measurement</h2>
     <p>Dockerized from day one: the PoC runs locally via <code>docker compose</code>; the same image deploys anywhere.</p>
   </div>
   <div class="rail">
     <div class="phase">
-      <div class="p">Phase 1 · PoC · 6–8 weeks</div>
-      <h3>The differentiated spine</h3>
+      <div class="p">Phases 1–3 · ~6.5 weeks</div>
+      <h3>Grounded spine on real protocols</h3>
       <ul>
-        <li>Foundation + Extraction (C1–C6, SoA)</li>
-        <li><b>Full Assurance layer</b> — the differentiator, not deferred</li>
-        <li>Integrity gates: UUID registry + pydantic + CORE</li>
-        <li>Thin certification UI + eval harness</li>
-        <li>Eligibility as free text; cloud Claude, tiered</li>
-        <li>Target: <b>exceed 89% field / 76% SoA</b>, calibrated</li>
+        <li>Substrate + <b>verbatim-quote grounding</b> + Part 11 audit</li>
+        <li>Backbone domains, sharded schemas, three gates</li>
+        <li><b>Multi-page SoA stitcher</b> + specialist grid + VLM content</li>
+        <li>Mechanical re-derivation as an independent cross-check</li>
+        <li>Fingerprint, section graph, prohibited scopes</li>
+        <li>Completeness accounting across every domain</li>
       </ul>
     </div>
     <div class="phase">
-      <div class="p">Phase 2 · Scale</div>
-      <h3>Depth & governance</h3>
+      <div class="p">Phases 4–7 · ~8 weeks</div>
+      <h3>Measured, certified, published</h3>
       <ul>
-        <li>Estimand + Amendment extraction</li>
-        <li>SLM fine-tuning + on-prem path</li>
-        <li>Neo4j graph → SDTM automation</li>
-        <li>Full web review UI</li>
-        <li>Closed-loop learning at scale</li>
-        <li>GxP validation package</li>
+        <li>Fused confidence + recalibration + <b>conformal bound</b></li>
+        <li>Risk-coverage curve — the real product metric</li>
+        <li>Review UI, sign-off, post-edit-distance telemetry</li>
+        <li>Estimands, amendments, sites (weakest published category)</li>
+        <li>Full CORE run on real protocols</li>
+        <li>A reproducible scoreboard — <b>no vendor publishes one</b></li>
       </ul>
     </div>
   </div>
 
   <div class="spike">
-    <div class="p">First move · 1–2 days</div>
-    <h3>The spike — ground every assumption before writing pipeline code</h3>
+    <div class="p">Phase 0 · first move · 2–3 days</div>
+    <h3>Re-measure the foundation before anything leans on it</h3>
     <ol>
-      <li>Load CDISC DDF-RA example instances into the data4knowledge pydantic model → confirm they validate.</li>
-      <li>Run the CORE engine against them locally, in Docker → confirm the gate works and violations are readable.</li>
-      <li>Run Protocol2USDM on one public protocol PDF → see its raw output and <em>exactly where it stops</em>. That defines what Assurance must add.</li>
-      <li>Stand up the <code>docker compose</code> skeleton — app + CORE + Neo4j placeholder.</li>
+      <li>Re-run the assembler over the corpus on the pinned <code>usdm4</code> SHA. The “0 of 235 protocols assembled” figure that shaped our risk posture is <b>stale</b> — the vendored source already fixes two of the bugs its own findings doc lists as open.</li>
+      <li>Pull <code>data4knowledge/usdm_data</code> and confirm how many studies give usable PDF → USDM eval pairs.</li>
+      <li>Check whether the three dated <code>Clinical Protocol - 0 (*).pdf</code> files are one study's amendment chain — if so, that is a free fixture, and the eval set is “2 studies / 4 documents,” which changes how we talk about generalisation.</li>
+      <li>Stand up CI with the sprawl guardrails: no empty packages, no files over 400 lines, no hard-coded machine paths, no field without evidence.</li>
     </ol>
-    <div class="kick"><b>Green light from the spike</b> = the whole design is grounded in runnable reality. Then we build the ingest → assurance → validate spine on one protocol end-to-end, and only then scale to the 3–5 PoC protocols.</div>
+    <div class="kick"><b>Green light from Phase 0</b> = the design rests on measured reality rather than on a number nobody has re-checked. It costs days, not weeks — and how much we lean on the Assembler versus <code>usdm4.builder</code> depends entirely on that one number.</div>
   </div>
 </section>
 
@@ -375,8 +382,9 @@ footer p{font-size:.76rem;color:var(--muted);line-height:1.6}
 
 <footer>
   <div class="wrap">
-    <p><b>USDM4-Assure</b> — finalized architecture v0.2 · companion to the USDM 4.0 executive briefing. Full build spec in <code>DESIGN.md</code>.</p>
-    <p>Sources: Panikos/Protocol2USDM · data4knowledge (usdm, usdm_data, ddf) · CDISC DDF-RA, usdm_api, cdisc-rules-engine · Banting Health arXiv 2602.00052 · MITRE ProtocolMiner · PHUSE ML08. Accuracy figures carry their published scope caveats.</p>
+    <p><b>USDM4-Assure</b> — technical design v0.3, revised against published evidence. Full build spec in <code>DESIGN.md</code>; the evidence review and phased roadmap in <code>PLAN.md</code>.</p>
+    <p>Sources: data4knowledge (<code>usdm4</code> GPL-3.0, <code>usdm_data</code>) · kerfors/soa2usdm (MIT) · CDISC DDF-RA, usdm_api, cdisc-rules-engine · Babaeipour et al. arXiv 2602.00052 · Kramer/MITRE ProtocolMiner MRA 14(3) · ExtractBench · LongExtractionBench · MinerU2.5 · Docling · ExtractConf · Mohri &amp; Hashimoto (ICML 2024) · MiniCheck · GLiNER-BioMed · FDA AI draft guidance · EMA AI reflection paper.</p>
+    <p><b>On accuracy figures:</b> the once-quoted “~89% field / ~76% SoA market ceiling” is not a matched benchmark. The 89% is a vendor-authored n=23 study on a bespoke non-USDM schema with a partly LLM-generated gold standard; the 76% is a peer-reviewed whole-table pass rate (22/29 protocols). There is no shared industry benchmark for protocol → USDM conversion. Any number we publish carries its own scope and method.</p>
   </div>
 </footer>
 
