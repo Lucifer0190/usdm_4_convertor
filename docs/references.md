@@ -1,39 +1,78 @@
 # References
 
+Full citation list and per-claim evidence grading (PROVEN vs CLAIMED/UNVALIDATED) is in
+[`../PLAN.md`](../PLAN.md). This page is the durable, curated subset.
+
 ## Standards & governing bodies
 
-- **CDISC USDM 4.0** — Unified Study Definitions Model, the target standard
-  (June 2025). Digital Data Flow (DDF) initiative: <https://www.cdisc.org/ddf>
-- **CDISC CORE** — the open conformance rules engine; USDM rules published as JSONata to
-  the CDISC Library (December 2025). <https://www.cdisc.org/core>
-- **ICH M11** — the global electronic protocol template USDM 4.0 aligns with.
+- **CDISC USDM 4.0** — Unified Study Definitions Model, released **3 June 2025**. Digital
+  Data Flow (DDF) initiative: <https://www.cdisc.org/ddf>
+- **CDISC CORE** — the open conformance rules engine. USDM rule *specifications* published
+  for v4.0 on 3 June 2025; the **executable** CORE rules only landed in the CDISC Library in
+  **December 2025**, and 27 errata have followed already. <https://www.cdisc.org/core>
+- **ICH M11** — the global electronic protocol template USDM 4.0 aligns with (CeSHarP).
+  Adopted at Step 4, 19 Nov 2025; FDA final guidance 22 May 2026; EU guideline effective
+  11 June 2026.
+- **ICH E6(R3) GCP** (2025) — makes data **traceability** an explicit, shared
+  sponsor/investigator obligation across the data lifecycle. Directly motivates the
+  grounding layer (L5) and the Part 11 audit trail (L9).
 - **NCI EVS** — the mandatory source of coded values (routes, dose forms, biomedical
   concept ids) for USDM.
+
+## Regulatory posture
+
+- **FDA draft guidance on AI in regulatory decision-making** (Jan 2025,
+  <https://www.fda.gov/media/184830/download>) — a risk-based, Context-of-Use framework.
+  Its scope explicitly excludes AI used for operational efficiency that doesn't affect
+  patient safety, drug quality, or study reliability — a tool with mandatory human
+  certification of every field is arguably in that excluded category, but the
+  determination should be confirmed by regulatory affairs, not self-certified.
+- **EMA Reflection Paper on AI in the medicinal product lifecycle** (adopted Sept 2024) —
+  risk-based, explicitly human-centred.
+- **21 CFR Part 11 / GAMP 5 (2nd ed.)** — the concrete audit-trail and validation
+  requirements this project's L9 layer is built to satisfy: immutable per-field record of
+  actor (including the model+prompt version), timestamp, prior value, reason for change,
+  and a human signature event.
 
 ## Tools we build on
 
 - **`cdisc-org/DDF-RA`** — the DDF reference architecture: the USDM 4.0 schema, the
-  implementation guide, and example instances.
+  implementation guide, machine-readable version deltas, and example instances.
 - **`cdisc-org/usdm_api`** — the official USDM API as pydantic classes.
 - **`cdisc-org/cdisc-rules-engine`** — the CORE engine (wrapped by `usdm4`).
-- **`data4knowledge/usdm4`** (PyPI: `usdm4`) — the pydantic USDM 4.0 model, the `Assembler`
-  / `TimelineAssembler`, the bundled d4k rule library, controlled-terminology cache, and
-  the CORE facade. USDM4-Assure builds its Integrity layer on this package.
-- **PyMuPDF** and **pdfplumber** — the two independent PDF/table engines behind the SoA
-  ensemble.
+- **`data4knowledge/usdm4`** (PyPI: `usdm4`, **GPL-3.0**) — the pydantic USDM 4.0 model,
+  the `Assembler` / `TimelineAssembler`, the bundled d4k rule library, controlled-terminology
+  cache, and the CORE facade. USDM4-Assure builds its assembly layer on this package.
+  GPL-3.0 is acceptable for internal (non-distributed) use — recorded as a deliberate
+  decision.
+- **`data4knowledge/usdm_data`** — **our ground-truth seed corpus**: ~20 real studies
+  mapped to USDM and CORE-validated, each traceable to a public NCT protocol PDF.
+- **`kerfors/soa2usdm`** (MIT, PHUSE 2025) — permissively-licensed reference for the SoA
+  path; its mechanical mark-matrix re-derivation pattern is adopted directly.
+- **PyMuPDF** — the text/character-geometry engine behind ingest and the grounding layer.
+- **Docling** (MIT) and **MinerU2.5** — layout/reading-order and table-grid engines
+  (§Architecture, L1); chosen on reproducible benchmark evidence over popularity.
 
-## Prior art (protocol → USDM)
+## Prior art (protocol → USDM) — with corrected scope caveats
 
-- **Banting Health** (arXiv 2602.00052, 2026) — RAG-based extraction; reported ~89%
-  weighted field accuracy vs ~62.6% for a single long-context model.
-- **MITRE ProtocolMiner** — Schedule-of-Activities extraction to FHIR/USDM; 22/29
-  protocols fully correct.
+> **The two most-quoted accuracy figures in this space are not a matched benchmark, and
+> one is not about USDM at all.** Full derivation in `PLAN.md` §1.
+
+- **Babaeipour, Charest & Wright, 2026** (arXiv 2602.00052) — the source of "~89% field
+  accuracy." A vendor-authored (Banting Health AI) study, **n=23 protocols**, on a
+  **bespoke 6-category schema with no CDISC/USDM mapping**, whose gold standard was partly
+  generated by LLMs. Real published number; **not a USDM benchmark**.
+- **Kramer, MITRE, 2026 (ProtocolMiner)** — the source of "~76% SoA accuracy" (22/29
+  protocols). Peer-reviewed, non-vendor, and genuinely USDM/FHIR-targeted — the strongest
+  legitimate reference point available. But it is a **whole-table pass rate**, a stricter
+  and differently-shaped metric than any per-field accuracy number.
 - **`Panikos/Protocol2USDM`** — an earlier open-source PDF→USDM v4 pipeline (now private);
-  originally informed the extraction-baseline strategy.
+  originally informed the extraction-baseline strategy in v0.2.
 
 > Accuracy figures across teams are **not directly comparable** — different protocol sets,
 > entity scopes, and ground-truth methods. Any number we publish must carry its specific
-> scope and measurement method. There is no shared industry benchmark yet.
+> scope and measurement method, per `PLAN.md` §8's calibration/eval methodology. There is
+> no shared industry benchmark for protocol → USDM conversion as of this writing.
 
 ## Documentation conventions used here
 
@@ -42,3 +81,5 @@
   blank-line separated).
 - **Prose docs** are Markdown, readable on any Git host, optionally served with
   [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/).
+- **Accuracy or benchmark claims** must cite a specific source and carry its scope caveat —
+  see `PLAN.md` for the standard this project now holds itself to.
