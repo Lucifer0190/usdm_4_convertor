@@ -1,163 +1,335 @@
-# Protocol → USDM 4.0 Conversion System — Finalized Technical Design (v0.2)
+# Protocol → USDM 4.0 Conversion System — Technical Design (v0.3)
 
 **Codename:** USDM4-Assure
-**Status:** Finalized architecture for sign-off (build not yet started)
+**Status:** architecture revised against published evidence; build in progress
 **Author:** Kirtikumar (Hexaware HTL) + Claude
-**Date:** 2026-08-14
-**Companion:** `usdm-4-executive-briefing.html` (strategy) · this doc = the build layer
+**Date:** 2026-09-16 · *(v0.2: 2026-08-14)*
+**Companion:** [`PLAN.md`](PLAN.md) (evidence + roadmap) · [`docs/`](docs/index.md) (reference)
+
+> **What changed in v0.3.** v0.2 was built on two numbers and one piece of arithmetic that
+> did not survive a literature review: a "~89% field / ~76% SoA market ceiling," and the
+> claim that two independent paths yield ~97–99% precision on their agreed set. Both are
+> corrected below. The *layered* architecture and the human-in-the-loop accuracy contract
+> survive intact; the mechanisms inside the layers change substantially. Full citations in
+> [`PLAN.md`](PLAN.md).
 
 ---
 
-## 0. The thesis — why this design beats the market
+## 0. The thesis — what actually beats the state of the art
 
-Every published system plateaus at **~89% field-level / ~76% SoA** accuracy (Banting Health, MITRE ProtocolMiner 22/29, Protocol2USDM). They fail for the **same four structural reasons**, and our architecture is designed to attack each one directly:
+### 0.1 What the published evidence says
 
-| # | Why the market plateaus | Our counter-mechanism | Design location |
-|---|-------------------------|-----------------------|-----------------|
-| 1 | **Single-path extraction** — one extractor per field, so its error = the system's error | **Multi-method ensemble** — every field extracted by ≥2 independent paths; agreement auto-accepts, disagreement routes to review | Assurance Layer §4.1 |
-| 2 | **Uncalibrated confidence** — reviewers can't see which fields are risky, so errors slip past review | **Grounded verifier + calibrated confidence** — a critic model checks each value against its source span; confidence is measured, not guessed | Assurance Layer §4.2–4.3 |
-| 3 | **SoA rebuilt from linearized text** — merged cells / multilevel headers destroyed | **Vision-first geometry, LLM-second semantics** — grid structure extracted deterministically from the image; LLM only labels | SoA sub-pipeline §3.C-SoA |
-| 4 | **Static systems** — nobody learns from the SME's corrections | **Closed-loop learning** — every correction becomes a few-shot example, then SLM training data | Learning Layer §7 |
+| Finding | Source |
+|---|---|
+| Best published accuracy on protocol → structured fields: **89.0%** (best-in-class RAG + frontier model). ~1 field in 9 is wrong | [Babaeipour et al. 2026](https://arxiv.org/abs/2602.00052) |
+| On ~358-page documents, frontier models retain only **48–53% recall** — *at high precision* | [LongExtractionBench](https://www.micro1.ai/benchmark/long-extraction) |
+| **0% valid output** from every frontier model on a 369-field schema | [ExtractBench](https://arxiv.org/abs/2602.12247) |
+| Cross-model error correlation **ρ = 0.74–0.82**; **48%** of mistakes replicate across model families | [Oracle's Fingerprint](https://arxiv.org/pdf/2605.00844) |
+| A **1.2B** specialist table model beats Gemini-2.5-Pro and a 72B VLM on table structure (88.2 vs 85.7 vs 82.2 TEDS) | [MinerU2.5](https://arxiv.org/html/2509.22186v1) |
+| Verbatim-grounded extraction: **93.0% vs 19.0%** exact match | [CogCanvas](https://arxiv.org/html/2601.00821v2) |
+| Fused multi-signal confidence: **0.928 AUC** vs logprobs 0.705, verbalized 0.692, self-consistency 0.744 | [ExtractConf](https://arxiv.org/pdf/2606.24420) |
 
-**The accuracy math.** Two independent extractors at ~89% each, with partially-independent errors, agree on ~80–85% of fields; on that agreed set, precision rises to ~97–99% (both must make the *same* mistake to fool it). The ~15–20% disagreement set is exactly what a human should review — so the SME reviews *less* and catches *more*. Certified output → clinically trustworthy (~100%), which is the real goal. **We don't beat the market by having a better model — we beat it by never trusting a single path and by measuring our own uncertainty honestly.**
+### 0.2 The real failure mode
+
+**Silent omission, not incorrect values.** Systems return a confident, well-formed,
+schema-valid study that is quietly *missing* rows, visits, criteria and arms. Nothing
+looks broken. In a regulated workflow this is the worst possible failure.
+
+Every mechanism below is chosen to attack that specific failure:
+
+| # | Failure | Counter-mechanism | Where |
+|---|---|---|---|
+| 1 | **Silent omission under long context / wide schema** | **Sharded extraction** (<40 fields/call, ≤5 nesting levels) over **routed evidence windows** + **completeness accounting** (expected vs found) | §3 L3–L4, L6 |
+| 2 | **Ungrounded values** — a plausible value with no real source | **Mandatory verbatim quote**, resolved to page + char offset + bbox **by our code, not the model**; exact-substring mismatch is a hard reject | §3 L5 |
+| 3 | **Table structure destroyed** — merged cells, multilevel headers, tables spanning 3–6 pages | **Specialist model owns the grid, VLM owns the cell content**; plus a **custom multi-page stitcher**, because no available tool solves this | §3 L1–L2 |
+| 4 | **Dishonest confidence** — reviewers can't tell which fields are risky | **Multi-signal calibrated confidence** (grounding features first) + **conformal bound** on the auto-accepted set | §3 L6 |
+
+### 0.3 The accuracy claim we can actually defend
+
+v0.2 claimed: *two paths at ~89% ⇒ ~97–99% precision on the agreed set.* **This is not
+supportable.** It assumes independent errors; measured correlation is ρ = 0.74–0.82, and
+errors originating in a shared parsing stage are ρ = 1.0 across every downstream model.
+Unanimous agreement on a *wrong* answer is common, and systematically so on exactly the
+hard fields we care about.
+
+What we claim instead:
+
+> **Every field carries a verifiable verbatim citation to page and coordinates, a
+> calibrated confidence, and a statistically-bounded auto-accept decision — with a Part 11
+> audit trail and measurably less reviewer time.**
+
+Ensemble agreement remains valuable — as **one feature in a calibrated confidence model**,
+never as a precision guarantee.
 
 ---
 
-## 1. The accuracy contract (unchanged, foundational)
+## 1. The accuracy contract (unchanged — and now better supported)
 
-"100% accuracy for clinical use" is achieved as a **human-in-the-loop certification guarantee**, not zero-touch output. The system's job is to (a) maximize *un-reviewed* accuracy, (b) make confidence trustworthy so review is surgical, and (c) block non-conformant output at the CORE gate. The clinical guarantee = Assurance Layer + CORE gate + SME certification. Any claim of zero-touch clinical output would be false and a regulatory risk.
+"100% accuracy for clinical use" is a **human-in-the-loop certification guarantee**, not
+zero-touch output. The system's job is to (a) maximise un-reviewed accuracy, (b) make
+confidence trustworthy so review is surgical, and (c) block non-conformant output at the
+conformance gate.
+
+The published evidence *strengthens* this position: at 89% SOTA, human review is not
+optional, so the product's real job is to make review **efficient and auditable** rather
+than to eliminate it. A 13-coordinator study found this class of tool cut processing time
+**40%** with higher rated quality — that is the win, and it is measurable.
 
 ---
 
-## 2. Build strategy — fork, don't greenfield
+## 2. Build strategy — assemble on the ecosystem
 
-**Decision: start from `Panikos/Protocol2USDM` + the `data4knowledge` libraries, then add the Assurance & Learning layers they lack.**
+**Decision: build on the `data4knowledge` `usdm4` package, and treat its ground-truth
+corpus as our eval seed.**
 
-- `Protocol2USDM` already gives us: PDF parsing, vision SoA extraction, multi-model orchestration (Claude/Gemini/GPT), USDM v4.0 serialization. → our **Foundation + Extraction layers baseline**.
-- `data4knowledge` (`usdm`, `usdm_data`, `study_definitions_workbench`, `ddf`) gives us: pydantic USDM model, **CORE validation**, Excel↔USDM, HTML render, Neo4j graph. → our **Integrity + Data layers plumbing**.
-- **What no one has, and what we add = the moat:** the Assurance Layer (ensemble + verifier + calibrated confidence) and the Learning Layer (closed-loop from SME corrections).
+- **`usdm4`** gives the pydantic USDM 4.0 model, the `Assembler` / `TimelineAssembler`, a
+  bundled d4k rule library, an offline controlled-terminology cache, and a CORE facade.
+  Rebuilding this is what sank comparable projects.
+- **`data4knowledge/usdm_data`** has **~20 real studies** mapped to USDM and CORE-validated,
+  each traceable to a public NCT protocol PDF. **This is our ground-truth seed** — it
+  replaces the plan to hand-label four local PDFs from scratch, which become a held-out set.
+- **`kerfors/soa2usdm`** (MIT, PHUSE 2025) is a permissively-licensed reference for the SoA
+  path; its **mechanical re-derivation of the mark matrix** pattern is adopted directly.
 
-First build task is a **spike** (§9) to validate these fork points on real example instances before committing.
+Three constraints to record rather than discover later:
+
+1. **`usdm4` is GPL-3.0.** Internal use is not distribution, so this is workable — but it
+   must be a recorded decision, not an accident.
+2. **Pin three versions independently:** USDM model version, CORE rule-set version, and
+   errata revision. USDM v4.0 shipped June 2025; executable CORE rules only appeared in
+   December 2025; **27 errata** already exist, some flipping ERROR↔WARNING. Treat rule
+   severity as data.
+3. **The upstream assembler is the integration risk.** Its own corpus run showed
+   assembly failures on real protocols. The currently vendored source is *newer than PyPI*
+   and already fixes two bugs its docs list as open — so **re-measure before designing
+   around it** (Phase 0), and keep a per-section fallback to `usdm4.builder`.
 
 ---
 
 ## 3. Layered architecture
 
 ```
-┌─ FOUNDATION ────────────────────────────────────────────────┐
-│ A. Ingest & Layout   B. Route & Retrieve (RAG + section index)│  deterministic, cacheable
+┌─ L0 · SUBSTRATE ────────────────────────────────────────────┐
+│ PyMuPDF: text layer, character bboxes, bookmarks/ToC         │ deterministic
+│ → character-level provenance for free. Never OCR born-digital│
 └──────────────────────────────────────────────────────────────┘
-┌─ EXTRACTION ────────────────────────────────────────────────┐
-│ C1..C7 domain extractors   +   C-SoA vision sub-pipeline      │  produces candidate USDM entities
+┌─ L1 · LAYOUT & TABLES ──────────────────────────────────────┐
+│ Docling (layout, reading order) ∥ MinerU2.5 (table grids)     │ two engines
+│ → their disagreement is the cheapest quality signal we get    │
 └──────────────────────────────────────────────────────────────┘
-┌─ ASSURANCE  ★ the differentiator ───────────────────────────┐
-│ 4.1 Ensemble  4.2 Grounded verifier  4.3 Calibrated confidence│  turns candidates → scored, triaged fields
+┌─ L2 · ★ MULTI-PAGE SoA STITCHER (custom) ───────────────────┐
+│ header-signature matching · "(continued)" cues · column       │ THE RISK CENTRE
+│ reconciliation · hard-fail loudly, never silently split       │
 └──────────────────────────────────────────────────────────────┘
-┌─ INTEGRITY ─────────────────────────────────────────────────┐
-│ D. Entity Registry + reconcile  ·  Coded-value service (EVS)  │  UUID graph correct + no memory codes
-│ E. Assemble  ·  F. Validate (pydantic + CORE gates)           │
+┌─ L3 · ROUTING ──────────────────────────────────────────────┐
+│ section graph · study fingerprint · extraction plan           │
+│ primary / supporting / PROHIBITED scopes, 4-axis scoping      │
 └──────────────────────────────────────────────────────────────┘
-┌─ CERTIFICATION ─────────────────────────────────────────────┐
-│ G. Provenance review UI  ·  SME sign-off  ·  audit trail      │  the "100%" guarantee
+┌─ L4 · EXTRACTION ───────────────────────────────────────────┐
+│ sharded: <40 fields/call, ≤5 nesting, narrow evidence windows │
+│ two-pass: free-text reasoning → constrained JSON emission     │
 └──────────────────────────────────────────────────────────────┘
-┌─ LEARNING (closed loop) ────────────────────────────────────┐
-│ 7. corrections → few-shot bank → eval set → SLM fine-tune     │  system improves per protocol
+┌─ L5 · ★ GROUNDING ──────────────────────────────────────────┐
+│ model emits a VERBATIM QUOTE; our code resolves page+char+bbox│ hard gate
+│ exact-substring mismatch → reject. Model never emits coords.  │
 └──────────────────────────────────────────────────────────────┘
-┌─ DATA (downstream, Phase 2) ────────────────────────────────┐
-│ H. Neo4j property graph — amendment impact, SDTM automation   │
+┌─ L6 · ★ ASSURANCE ──────────────────────────────────────────┐
+│ multi-signal confidence → conformal threshold → triage        │ the moat
+│ + COMPLETENESS accounting (expected vs found)                 │
+└──────────────────────────────────────────────────────────────┘
+┌─ L7 · ASSEMBLY ─────────────────────────────────────────────┐
+│ input sanitizer → usdm4 Assembler → per-section builder       │
+│ fallback; report the assembler reliance ratio per run         │
+└──────────────────────────────────────────────────────────────┘
+┌─ L8 · VALIDATION ───────────────────────────────────────────┐
+│ pydantic → d4k rules → CDISC CORE · rule→repair map           │
+│ bounded repair loop (≤2 rounds), then hand to review          │
+└──────────────────────────────────────────────────────────────┘
+┌─ L9 · CERTIFICATION ────────────────────────────────────────┐
+│ review UI (click-to-source) · SME sign-off · Part 11 audit    │ the "100%"
 └──────────────────────────────────────────────────────────────┘
 ```
 
-### Foundation
+**Governing principle:** *no single model ever owns both the grid and the content of a
+table, and no single call ever owns more than ~40 schema fields.*
 
-**A. Ingest & Layout (`ingest/`)** — `pymupdf` (text + coords + page-image render) + `pdfplumber` (table candidates). Output: `Document` = ordered blocks `{text, page, bbox, kind}` + rendered page PNGs (SoA needs these). No LLM — deterministic, cached.
+### L0–L1 · Substrate, layout, tables
 
-**B. Route & Retrieve (`retrieve/`)** — section index over ICH M11-style headings; **header-preserving chunking** (never naive split); embeddings + top-k retrieval into focused domain prompts (RAG = +26 pts vs long-context, Banting). Tables bypass RAG → SoA sub-pipeline with page images.
+Protocols are born-digital, so PyMuPDF's text layer and **character geometry** are exact
+and free — and they are what makes L5's quote→coordinate resolution possible. Docling
+(MIT) handles layout and reading order; MinerU2.5 handles table grids. Running both on
+table regions costs little and yields a disagreement signal that feeds L6.
 
-### Extraction
+**Rejected on evidence:** Marker (65.8 table TEDS on the neutral benchmark despite strong
+vendor numbers), SmolDocling for tables (0.52 TEDS vs TableFormer's 0.89), standalone TATR
+(~75–81% exact match at best, and poorly calibrated off-domain).
 
-**C1–C7 domain extractors (`extract/`)** — one module per USDM domain, run in dependency order, each consuming prior outputs as context. Each returns **pydantic USDM instances + provenance**, not loose dicts.
+### L2 · ★ Multi-page SoA stitcher — the risk centre
 
-| # | Domain | Produces | Phase |
-|---|--------|----------|-------|
-| C1 | Metadata & identifiers | Study, StudyVersion, StudyIdentifier, Organization, StudyTitle | 1 |
-| C2 | Design skeleton | StudyDesign, StudyArm, StudyEpoch, StudyCell, StudyElement | 1 |
-| C3 | Population & eligibility (free text) | StudyDesignPopulation, EligibilityCriterion(+Item) | 1 |
-| C4 | Objectives & endpoints | Objective, Endpoint | 1 (Estimand → 2) |
-| C5 | Interventions | StudyIntervention, Administration, AdministrableProduct | 1 |
-| C6 | Biomedical concepts | BiomedicalConcept, Activity | 1 |
-| C-SoA | Schedule | ScheduleTimeline, Encounter, ScheduledActivityInstance, Timing, Condition, TransitionRule | 1 |
-| C7 | Amendments | StudyAmendment, StudyAmendmentReason, ImpactedEntity | 2 |
+**No available tool solves this, and clinical SoA tables routinely span 3–6 pages.**
+Docling does not merge cross-page tables (issue #2976, open); MinerU merges but drops
+content on continuation pages (#4311, open).
 
-**C-SoA — vision-first SoA sub-pipeline (`extract/soa/`)** — the safety-critical module. Attacks market failure #3:
-1. **Geometry from vision, deterministically** — multimodal model returns the *grid*: header hierarchy (epoch→visit→week), row activities, **merged-cell spans as explicit spans**. We never ask it to rebuild the table from linearized text (the market's #1 SoA error).
-2. **Value extraction** — cell values from layout-parsed table.
-3. **Cross-validation** — reconcile vision-grid vs text; tag each cell `both`/`text-only`/`vision-only`/`none`. Disagreements surfaced, never auto-resolved.
-4. **Semantic build** — ScheduledActivityInstance (activity×encounter×epoch), Timing (ISO-8601 windows), **Condition** for footnote-gated cells (footnote → predicate), TransitionRule for dose-escalation/cyclic logic. (Matches ProtocolMiner's relative-timing/window/conditional coverage — the parts it got right.)
+We build it: match column-header signatures across consecutive pages, detect "(continued)"
+cues and repeated header rows, reconcile column counts, and **hard-fail loudly** rather
+than silently emitting two tables. Gated by a hand-labelled set of 30–50 real multi-page
+SoAs.
 
-### ★ Assurance Layer (`assure/`) — the moat
+### L3 · Routing, fingerprinting, prohibited scopes
 
-**4.1 Multi-method ensemble.** Every field is produced by **≥2 independent paths**, chosen per field type:
-- prose fields → (a) Claude RAG extractor + (b) a second-family model (Gemini-Vertex/GPT) OR a second retrieval strategy;
-- SoA cells → text-path + vision-path (already dual by construction);
-- numeric/timing/dose fields → **self-consistency voting** (sample N=3–5, majority) because these are the highest-clinical-risk and cheapest to over-sample.
-Agreement → auto-accept (high confidence). Disagreement → review queue with both candidates shown.
+Evidence: retrieval with chunk provenance beat whole-document stuffing by **26 points**
+(89.0% vs 62.6%) — routing is an *accuracy* mechanism, not just a cost optimisation.
 
-**4.2 Grounded verifier (critic).** A separate model call asks, for each accepted field: *"Is value V supported by source span S? {supported | partial | unsupported}"* — grounded in the retrieved text, never memory. `unsupported` → forced to review regardless of ensemble agreement. This is the dedicated hallucination catch, especially for numeric/timing.
+- **Section graph** — typed sections with authority surfaces and a `current` vs `historic`
+  distinction.
+- **Study fingerprint** — classify the protocol family first (11 families as config data),
+  then adapt routing, prompts and expectations.
+- **Prohibited scopes** — an explicit deny-list per domain, so amendment-history text
+  cannot leak into "current design" and an appendix sub-study cannot pollute the main
+  schedule. Scoping is 4-axis: study / phase / arm / region.
 
-**4.3 Calibrated confidence.** Confidence = f(ensemble agreement, verifier verdict, retrieval score, code-resolution status). Calibrated on the eval set so "90% confidence" means ~90% correct — *that* is what makes the review UI's triage trustworthy (attacks failure #2). Thresholds (auto-accept / review / block) are tunable per client risk appetite.
+### L4 · Sharded extraction
 
-### Integrity
+Schemas are split into sub-schemas of **<40 fields, ≤5 nesting levels** — forced by
+ExtractBench's 0%-at-369-fields result and by structured-output nesting caps. Each call
+sees a **narrow, routed evidence window**, never the whole document.
 
-**D. Entity Registry & reconciliation (`registry/`)** — central UUID authority. Extractors **never invent UUIDs**; they resolve entities by natural key and get stable UUIDs back. Post-pass: dangling refs, orphans, type mismatches → flagged. This is what single-LLM approaches structurally cannot do.
+**Two-pass emission everywhere:** free-text reasoning first, constrained JSON second. This
+is the practical resolution of the "format restrictions hurt reasoning" debate, and it
+costs almost nothing.
 
-**Coded-value service (`coding/`)** — every coded attribute (route, dose form, timing type, BC codes) via **NCI EVS + CDISC Library API**, cached. LLM may only propose the *search term*; unresolved → review, never guessed. Architectural invariant.
+### L5 · ★ Grounding — the highest-leverage mechanism
 
-**E. Assemble (`assemble/`)** → compose registry entities into the full `Study` pydantic object.
+Every field arrives with a **verbatim quote**. Our code locates it by deterministic
+substring search (with a whitespace/ligature-normalised second pass; which pass succeeded
+becomes a confidence feature). **A failed match is a hard, non-probabilistic reject.**
 
-**F. Validate (`validate/`)** — two blocking gates: (1) pydantic structural, (2) **CDISC CORE** via `cdisc-org/cdisc-rules-engine` (USDM 4.0 JSON-schema + Dec-2025 JSONata rules). Not certifiable until both pass or violations are SME-waived with audit reason. *Also use constrained/structured-output generation so schema-invalid JSON is impossible by construction.*
+**The model never emits coordinates** — it emits a quote, and we resolve page, character
+offset and bounding box from the PDF's own geometry. Model-emitted coordinates are
+hallucination-prone and unsupported by any benchmark.
 
-### Certification
+This is also the **GAMP 5 argument**: deterministic code can be validated classically,
+LLM output cannot, so we push as much logic as possible into deterministic checks.
 
-**G. Review UI (`review/`)** — every field shows source (page/bbox), method (text/vision/both/ensemble), calibrated confidence, verifier verdict, CORE status. Sort by risk: disagreements, unsupported, vision-only, unresolved-code, and all numeric/timing float to top. SME edits write to the pydantic model; edit history = audit trail (who/what/when/prompt-version). **This is where "100%" is realized.** PoC = thin (annotated JSON + spreadsheet); Phase 2 = full web app.
+### L6 · ★ Assurance — the moat
 
-### Learning (closed loop) — attacks failure #4
+**Multi-signal confidence.** Not a hand-tuned formula. Features, in rough order of
+published importance: quote-verification outcome (and which normalisation pass), text-layer
+vs OCR provenance, NLI entailment score, cross-model agreement (exact + fuzzy), field type,
+retrieval score, table-cell flag, span length, page position. Fit a small model; recalibrate
+post-hoc (Platt/Lasso works from ~165 samples; isotonic needs ~1000).
 
-**7. Learning Layer (`learn/`)** — every SME correction is captured as a labeled `(source span → correct value)` pair. Uses:
-- **few-shot bank** — corrections retrieved as in-context examples for similar future fields (immediate benefit, no training);
-- **growing eval set** — every correction hardens the regression suite;
-- **SLM fine-tuning (Phase 2)** — accumulated pairs train the narrow-task SLMs (eligibility categorization, terminology, entity normalization).
-Net effect: **the system's un-reviewed accuracy rises with every protocol processed.** Static market tools cannot do this.
+> **Logprobs are not load-bearing.** Anthropic exposes none, and OpenRouter's `logprobs`
+> parameter is not honoured by every provider — a logprob-dependent design breaks
+> *silently* on a model swap.
 
-### Data (downstream, Phase 2)
+**Conformal bound.** Split conformal with small-sample (SSBC) correction gives: *under
+exchangeability, the expected proportion of incorrect fields among auto-accepted ones is
+≤ α*, usable from n ≈ 47. **Say exactly that and no more** — the guarantee is **marginal,
+not per-field-type**, and exchangeability breaks on new sponsor templates or therapeutic
+areas. Global bound first; per-class only at ~20+ protocols.
 
-**H. Graph store (`graph/`)** — Neo4j (reuse d4k's `ddf` loader). Flat JSON = exchange format; graph = operational store for amendment impact, cross-study benchmarking, protocol→SDTM via BiomedicalConcept. **Not in the extraction path** (GraphRAG adds latency, no extraction-accuracy gain).
+**Completeness accounting.** Each domain declares expectations (visit count from design vs
+columns in the stitched SoA; arm count vs cells; activity rows vs footnote references). A
+mismatch is a **first-class finding** — this is the defence against silent omission.
+
+**Triage.** `auto_accept | review | block`. `block` means "no defensible value; a human must
+supply it." Every run reports two numbers: **auto-accept coverage** and **review burden**.
+
+### L7–L8 · Assembly and validation
+
+An **input sanitizer** enforces the assembler's implicit contract before `execute()` — no
+empty required strings, valid org-role keys, well-formed enrollment blocks, SoA emitted as
+a list of timelines. Sanitizer repairs are surfaced as quality findings ("we had to repair
+our own input"), which is a direct extraction-quality signal.
+
+Sections the assembler cannot express (narrative content, scheduled-instance/condition/
+transition-rule mechanics, governance dates, abbreviations) go straight to
+`usdm4.builder`. Everything else tries the Assembler with an automatic per-section
+fallback, and the run reports an **assembler reliance ratio**.
+
+Validation runs three gates — pydantic → d4k rules → CDISC CORE — plus a **rule → repair
+action** map that neither prior codebase built. The repair loop is bounded (≤2 rounds,
+token/time ceilings): findings map to `(domain, field)`, only those slices are re-extracted
+(usually escalating to the vision path), then re-sanitised, re-assembled, re-gated.
+Anything unresolved becomes `review`/`block` — never silently dropped.
+
+### L9 · Certification
+
+Every field shows value, source (page/bbox **crop**), method, calibrated confidence,
+verifier verdict and conformance status, sorted by risk. SME edits write to the model;
+edit history is the audit trail.
+
+**Part 11 audit record, per field, from day one:** model ID + version, prompt hash,
+temperature/seed, retrieval config, source PDF SHA-256, page/span/bbox, quote, verification
+outcomes, confidence, threshold, decision, reviewer identity, UTC timestamp, prior value,
+reason-for-change, signature meaning. *Cheap to design in; brutal to retrofit.*
+[ICH E6(R3)](https://www.ct-toolkit.ac.uk/news/summary-key-changes-ich-e6-r3-guidelines)
+makes traceability an explicit obligation, so L5 + L9 are closer to compliance requirements
+than differentiators.
+
+**Post-edit distance** is captured as the ongoing quality metric — objective, cheap, and it
+accumulates labels automatically.
 
 ---
 
-## 4. Model orchestration — Claude-primary, tiered thinking, ensemble-diverse
+## 4. Model orchestration — OpenRouter switch, SLM-tiered
 
-Router (`llm/router.py`) picks model + thinking budget per task:
+All traffic runs through **OpenRouter** behind `llm/router.py`, with roles declared in
+config so any model is swappable per role without code changes. Already implemented:
+`llm/openrouter.py`, `llm/config.py`, a Claude tier ladder, and a Llama-3.1-8B SLM member.
 
-| Task | Model + thinking | Rationale |
-|------|------------------|-----------|
-| Cheap/narrow (term→search string, classification) | **Claude Haiku**, no extended thinking | high volume, low complexity |
-| Prose domain extraction (C1–C6) | **Claude Sonnet**, light thinking | reasoning over scattered fields |
-| SoA vision, reconciliation, verifier, hard eligibility | **Claude Opus + extended thinking** | hardest reasoning, highest clinical risk |
-| Ensemble second path | **different family** (Gemini-Vertex / GPT-5) | error *independence* is the point — same model twice ≠ ensemble |
-| Narrow high-volume (Phase 2) | **fine-tuned SLM** (Llama 3.1 8B), on-prem | cost + HIPAA data residency |
+| Tier | Component | Job | Evidence |
+|---|---|---|---|
+| Deterministic | PyMuPDF · Docling · MinerU2.5 | text, layout, table grids, stitching | 1.2B specialist beats Gemini-2.5-Pro on TEDS |
+| SLM (local) | **GLiNER-BioMed** | drug / procedure / lab / visit / AE spotting | **59.8%** zero-shot, **70.4%** 10-shot F1 |
+| SLM (local) | **MiniCheck-FT5 (770M)** | does the quote support the value? | **74.7% ≈ GPT-4's 75.3%, ~400× cheaper** |
+| SLM (local) | small classifier | section routing, SoA-vs-narrative | structured generation helps classification |
+| SLM (tuned) | QLoRA Llama-3.1-8B / Qwen3-8B | high-volume narrow fields, once labels exist | **90.0% exact match, non-inferior to a 2nd human annotator** |
+| Frontier | Claude / GPT / Gemini | SoA cell content, estimands, amendment diffs, cross-section reasoning | small models far below the 44.9% F1 long-doc ceiling |
 
-Rules: Gemini only via **Vertex AI enterprise BLOCK_NONE**. **All prompts version-controlled** (data4knowledge ran 60+ versions — treat prompts as production code). Router logs model+prompt-version per field into the audit trail.
+**Rules.**
+- **Cross-family verification only** (ρ = 0.54 cross vs 0.77 within), and **verify only the
+  uncertain subset** to control cost.
+- **Never let the extracting model judge its own output** — self-preference bias up to +90%.
+- **If sampling for self-consistency, sample in YAML/free-text and vote, then emit JSON
+  once** — JSON-constrained decoding collapses answer diversity (modal share 41% → 64%), so
+  voting under a JSON grammar is far less independent than it appears.
+- **Do not build:** verbalized confidence as a gate (0.692 AUC — worse than logprobs);
+  SmolDocling anywhere near tables; model-emitted coordinates.
+- All prompts version-controlled and hashed into the audit trail; a prompt change is a
+  potential accuracy regression and re-runs the eval.
 
 ---
 
-## 5. Eval harness (`eval/`) — you can't surpass what you can't measure
+## 5. Eval & calibration — measure, then claim
 
-You have no data, so bootstrapping is step 1:
-1. **Ground truth v0** = example USDM instances in `DDF-RA` / `usdm_data` + their source protocols; confirm they pass our validators (smoke test + first labels).
-2. **Field-level scorer** — UUID-normalized path flattening; per-domain weighted accuracy (Banting method) + CORE pass rate + **SoA per-cell accuracy separately** + **confidence calibration curve** (are we honest about our uncertainty?).
-3. **Regression gate** — every prompt/model change re-runs eval; accuracy must not drop. Non-negotiable given prompt sensitivity.
-4. **Beat-the-market scoreboard** — track our numbers vs the published ~89%/~76% with matched scope caveats.
+**Ground truth.** Seed from `data4knowledge/usdm_data` (~20 studies, CORE-validated, public
+source PDFs). Our four local PDFs are **held out**. Labels are versioned, carry
+`labeler`/`labeled_at`, and are **frozen** — when the pipeline disagrees with truth we fix
+the pipeline or file a justified truth correction, never silently edit truth.
+
+**Metrics.**
+- **Field-level** accuracy, reported both at 100% coverage *and* on the auto-accept subset
+  (the number that matters operationally).
+- **SoA** cell-level P/R/F1 plus structural exact-match (visit/activity/epoch counts). Note
+  the honest comparison: Kramer/MITRE's 76% is a **whole-SoA pass rate** (22/29), a stricter
+  bar than per-cell accuracy — beating it means 23+/29 *fully correct* timelines.
+- **Conformance:** d4k and CORE finding counts, plus the assembler reliance ratio.
+- **Operational:** review burden, median certification time, post-edit distance.
+- **Headline calibration metric is Brier score** (strictly proper), with CORP reliability
+  diagrams for the visual. ECE only as a secondary, with bin count pre-registered — it is
+  binning-sensitive and not a proper scoring rule.
+- **Risk-coverage (AURC)** is the deployment-facing metric: "auto-accept X% of fields at
+  ≤Y% error; review the rest."
+
+**Calibration.** Fit on pooled `(confidence, correct)` pairs with **leave-one-protocol-out**
+CV. Note that 4 protocols ≈ 1,200 field-level labels — enough for global recalibration and
+an SSBC-corrected global conformal bound, **not** enough for per-field-type guarantees.
+State that asymmetry explicitly in anything shown to a sponsor.
+
+**Discipline:** accuracy is *reported* by the eval command, never asserted in a unit test.
+Test correctness; measure accuracy.
 
 ---
 
@@ -165,54 +337,98 @@ You have no data, so bootstrapping is step 1:
 
 ```
 usdm4_assure/
-  ingest/        A — pdf → layout + page images
-  retrieve/      B — chunking, embeddings, RAG, routing
-  extract/       C1–C7 domain extractors
-    soa/         C-SoA vision-first sub-pipeline
-  assure/        ★ 4.1 ensemble · 4.2 verifier · 4.3 confidence
-  registry/      D — UUID registry + reconciliation
-  coding/        NCI EVS / CDISC Library lookup (+cache)
-  assemble/      E — compose Study object
-  validate/      F — pydantic + CORE gates + structured-output guards
-  review/        G — provenance review UI (API + frontend)
-  learn/         7 — correction capture, few-shot bank, SLM datasets
-  graph/         H — Neo4j loader (Phase 2)
-  llm/           router, provider adapters, versioned prompts
-  eval/          harness, scorers, ground-truth, market scoreboard
-  usdm_model/    vendored/pinned CDISC pydantic classes (d4k)
+  ingest/        L0 — pdf → text layer, char bboxes, page images
+  layout/        L1 — Docling / MinerU adapters, table regions
+  soa/           L2 — multi-page stitcher (★ risk centre), grid reconciliation
+  sections/      L3 — section graph, fingerprint, route plan, prohibited scopes
+  extract/       L4 — sharded domain extractors
+  ground/        L5 — quote → page/char/bbox resolution, exact-substring gate
+  assure/        L6 — ★ confidence features, calibration, conformal, completeness, triage
+  assemble/      L7 — sanitizer, Assembler adapter, builder-direct fallback, strategy
+  validate/      L8 — three gates, rule→repair map, bounded repair loop
+  review/        L9 — review UI, sign-off, Part 11 audit trail
+  llm/           OpenRouter router, provider adapters, versioned prompts, disk cache
+  eval/          ground truth, scoring, calibration, scoreboard
   tests/
-  docker/        Dockerfile + compose (CORE engine, Neo4j, app)
+  docker/
 ```
 
-Dockerized from day one (your requirement): PoC runs locally via `docker compose`, same image deploys anywhere.
+*Stub packages are not created ahead of their code* — v0.2 left seven empty 1-line packages
+that made the design look implemented when it was not. CI now fails on empty packages,
+files over 400 lines, hard-coded machine paths, and any field lacking evidence.
 
 ---
 
 ## 7. Phased plan
 
-**Phase 1 — PoC (6–8 wks):** Foundation + Extraction (C1–C6, C-SoA) + **full Assurance Layer** (this is the differentiator, not a nice-to-have) + Integrity + thin Certification UI + Eval. Eligibility as free text (defer AND/OR logic). Cloud Claude, tiered. Dockerized local. Target: **exceed 89% field / 76% SoA** on 3–5 protocols, with calibrated confidence.
-**Phase 2:** Estimand, Amendments (C7), SLM fine-tuning + on-prem, Neo4j (H), full web review UI, GxP validation package, closed-loop learning at scale.
+Detail and exit criteria in [`PLAN.md` §6](PLAN.md). Summary:
+
+| Phase | Deliverable |
+|---|---|
+| **0** (3d) | Re-measure the assembler on current `usdm4`; pull the ~20-study corpus; CI guardrails |
+| **1** (2.5wk) | Substrate + **grounding** + Part 11 audit + backbone domains + three gates, on a **real** protocol |
+| **2** (2wk) | **Multi-page SoA stitcher** + dual-engine grid + VLM cell pass + mechanical re-derivation |
+| **3** (2wk) | Fingerprint, section graph, prohibited scopes, completeness accounting |
+| **4** (2wk) | Multi-signal confidence + recalibration + conformal; first honest scoreboard |
+| **5** (2wk) | Review UI, certification, post-edit-distance telemetry |
+| **6** (3wk) | Estimands, amendments, sites (weakest published category), then the hardest tier |
+| **7** (1wk+) | Full CORE run on real protocols; publish a reproducible number |
 
 ---
 
-## 8. Decisions confirmed / defaults taken
+## 8. Decisions on record
 
-- ✅ Design-first, then build. ✅ Python. ✅ **Claude primary, tiered thinking**; second family only for ensemble independence. ✅ PoC local + **Dockerized** for portability. ✅ No data → bootstrap from CDISC/`data4knowledge` examples + public ClinicalTrials.gov protocols.
-- **Default taken (say if you disagree):** thin review UI for PoC; local FAISS/Chroma vector store; fork `Protocol2USDM` + `data4knowledge` as the baseline.
+- ✅ Python 3.12 single pin (the CDISC stack has no 3.13 wheel).
+- ✅ Build on `data4knowledge/usdm4`; **do not** reimplement the USDM class hierarchy.
+- ✅ `usdm4` is **GPL-3.0** — acceptable for internal use (not distribution), recorded deliberately.
+- ✅ **OpenRouter** as the gateway, multi-model by role, SLM-tiered where proven.
+- ✅ Ground truth seeded from `usdm_data`; the four local protocol PDFs are held out.
+- ✅ Logprobs never load-bearing; verbalized confidence never a gate.
+- ✅ Human certification of every field — which is also the argument that this is an
+  *operational-efficiency* tool under the FDA framework. **Route the Context-of-Use
+  determination through regulatory affairs; do not self-certify it.**
+- ⏸️ Deferred deliberately: Neo4j graph store, Merkle/replay receipts, multi-tenant
+  SaaS/RBAC, cross-document contradiction detection, SLM fine-tuning (needs the correction
+  flywheel first).
 
 ---
 
-## 9. First build step — the spike (before any pipeline code)
+## 9. Next step — Phase 0, and why it is first
 
-Before committing to the fork, a 1–2 day spike to de-risk every assumption:
-1. Clone `data4knowledge/usdm` + `DDF-RA`; load example USDM 4.0 instances into the pydantic model → confirm they validate.
-2. Run `cdisc-org/cdisc-rules-engine` CORE against those instances locally, in Docker → confirm the gate works and we can read violations.
-3. Clone `Panikos/Protocol2USDM`; run it on one public protocol PDF → see its raw output quality and where it stops (this defines exactly what our Assurance Layer must add).
-4. Stand up the `docker compose` skeleton (app + CORE + Neo4j placeholder).
+Before any architecture is frozen, **re-measure the foundation**. The "0 of 235 protocols
+assembled" figure that shaped our risk posture is **stale**: the vendored `usdm4` source
+(v0.29.0) already contains fixes for two of the bugs its own findings doc lists as open.
+We therefore do not currently know the real assembler pass rate — and how much we lean on
+the Assembler versus `usdm4.builder` depends entirely on that number.
 
-**Green light from the spike = the entire design is grounded in verified, runnable reality.** Then we build the ingest→assurance→validate spine on one protocol end-to-end, and only then scale to the 3–5 PoC protocols.
+Phase 0 costs days, not weeks:
+
+1. Re-run the assembler over the corpus on the current pinned SHA; publish the pass rate
+   and the top three remaining failure modes.
+2. Pull `data4knowledge/usdm_data` and confirm how many studies give us usable
+   (PDF → USDM) eval pairs.
+3. Confirm whether the three dated `Clinical Protocol - 0 (*).pdf` files are versions of one
+   study — if so, that is a free amendment-chain fixture and the eval set is "2 studies /
+   4 documents," which changes how we talk about generalisation.
+4. Stand up CI with the sprawl guardrails.
+
+**Green light from Phase 0 = the design rests on measured reality rather than on a number
+nobody has re-checked.**
 
 ---
 
 ## Sources
-Protocol2USDM (github.com/Panikos/Protocol2USDM) · data4knowledge repos (usdm, usdm_data, ddf, study_definitions_workbench) · CDISC DDF-RA, usdm_api, cdisc-rules-engine · Banting Health arXiv 2602.00052 · MITRE ProtocolMiner (esmed.org MRA 7362) · PHUSE ML08 SoA→USDM.
+
+Full citation list in [`PLAN.md`](PLAN.md). Primary:
+Babaeipour et al. 2026 ([arXiv 2602.00052](https://arxiv.org/abs/2602.00052)) ·
+Kramer/MITRE ProtocolMiner ([MRA 14(3)](https://esmed.org/MRA/mra/article/view/7362)) ·
+[ExtractBench](https://arxiv.org/abs/2602.12247) ·
+[LongExtractionBench](https://www.micro1.ai/benchmark/long-extraction) ·
+[MinerU2.5](https://arxiv.org/html/2509.22186v1) ·
+[ExtractConf](https://arxiv.org/pdf/2606.24420) ·
+[Conformal factuality (ICML 2024)](https://proceedings.mlr.press/v235/mohri24a.html) ·
+[MiniCheck](https://arxiv.org/abs/2404.10774) ·
+[GLiNER-BioMed](https://academic.oup.com/bioinformatics/article/42/6/btag322/8690923) ·
+CDISC [DDF-RA](https://github.com/cdisc-org/DDF-RA) / [CORE](https://www.cdisc.org/core) ·
+[usdm4](https://github.com/data4knowledge/usdm4) · [usdm_data](https://github.com/data4knowledge/usdm_data) ·
+[soa2usdm](https://github.com/kerfors/soa2usdm)
