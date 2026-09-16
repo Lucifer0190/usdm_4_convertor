@@ -6,6 +6,43 @@ yet semantically versioned.
 
 ## [Unreleased]
 
+### Architecture (v0.3)
+- **Rewrote `DESIGN.md` and `docs/` against a published-literature review** (`PLAN.md`,
+  new). Two v0.2 claims did not survive the review and are retracted rather than carried
+  forward:
+  - The "~89% field / ~76% SoA market ceiling" was not a matched benchmark. The 89%
+    figure is a vendor-authored (Banting Health AI) n=23 study on a bespoke non-USDM
+    schema with a partly-LLM-generated gold standard; the 76% figure (Kramer/MITRE
+    ProtocolMiner, peer-reviewed, genuinely USDM-targeted) is a whole-table pass rate
+    (22/29 protocols), not a field-level metric. Quoting them together implied a
+    benchmark that does not exist.
+  - "Two independent paths at ~89% each agree on ~80-85% of fields, raising precision to
+    ~97-99% on the agreed set" assumed near-independent errors. Measured cross-model
+    error correlation is 0.74-0.82 (GPT-4o/Claude 0.822), and 48% of mistakes replicate
+    across model families. Ensemble agreement is retained as one input to a calibrated
+    confidence model, not a precision guarantee.
+- New architecture layers added to the design (not yet all implemented — see `PLAN.md`
+  for phasing): a grounding layer (L5) that resolves every field to a verbatim,
+  exact-substring-verified quote and page/character/bbox coordinates computed by code,
+  never emitted by the model; a custom multi-page Schedule-of-Activities table stitcher
+  (L2), since no available tool merges tables spanning multiple pages correctly; a
+  completeness-accounting step (expected vs. found counts) as the direct defense against
+  silent omission, the dominant failure mode on long documents; and a conformal-prediction
+  bound on the auto-accepted field set, replacing the plan for a purely hand-tuned
+  confidence formula.
+- Vision-first SoA reframed as **specialist-grid + vision-LLM-content**: published
+  evidence shows a 1.2B specialist table model beats frontier vision-LLMs on table
+  *structure*, while vision-LLMs are stronger on *cell text* — no single model should own
+  both.
+- Recorded `usdm4`'s GPL-3.0 license as a deliberate, internal-use decision, and adopted
+  `data4knowledge/usdm_data` (~20 real, CORE-validated studies with public source PDFs) as
+  the ground-truth seed corpus in place of hand-labeling the 4 local protocol PDFs from
+  scratch.
+- Corrected a stale internal figure: an earlier spike's "0 of 235 protocols assembled"
+  result is outdated against the currently vendored `usdm4` source, which already fixes
+  two of that spike's "open" bugs. The real pass rate is unmeasured, not proven broken —
+  re-measuring it is now Phase 0 of the roadmap.
+
 ### Added
 - **SLM ensemble member** — `--slm` on `convert`/`convert-full` adds a cheap
   different-family small model (default `meta-llama/llama-3.1-8b-instruct`,
