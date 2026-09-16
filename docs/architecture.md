@@ -1,72 +1,112 @@
 # Architecture
 
-USDM4-Assure is organized as seven layers. Data flows top to bottom; each layer speaks
-only in the shared contracts from `usdm4_assure.contracts`, which is what lets the
-Assurance layer treat any extractor's output uniformly.
+USDM4-Assure is organized as ten layers (v0.3). Data flows top to bottom; each layer
+speaks only in the shared contracts from `usdm4_assure.contracts`, which is what lets the
+Assurance layer treat any extractor's output uniformly. Full evidence and rationale in
+[`../PLAN.md`](../PLAN.md) and [`../DESIGN.md`](../DESIGN.md).
 
 ```
-┌─ FOUNDATION ───────────────────────────────────────────────┐
-│ ingest/  → PDF to positioned text blocks + page images      │  deterministic, cacheable
-│ retrieve/ (planned) → section index, RAG chunking           │
-└─────────────────────────────────────────────────────────────┘
-┌─ EXTRACTION ───────────────────────────────────────────────┐
-│ extract/  → one module per USDM domain (C1..C4, SoA)        │  produces candidate values
-│ extract/soa/ → vision-first Schedule-of-Activities          │
-└─────────────────────────────────────────────────────────────┘
-┌─ ASSURANCE ★ (the moat) ───────────────────────────────────┐
-│ assure/  → ensemble · grounded verifier · calibrated conf.  │  candidates -> scored, triaged
-└─────────────────────────────────────────────────────────────┘
-┌─ INTEGRITY ────────────────────────────────────────────────┐
-│ assemble/ → compose USDM entities (via data4knowledge)      │
-│ validate/ → structural + d4k + CORE conformance gates       │
-│ coding/ (planned) → NCI/CDISC coded-value lookup            │
-└─────────────────────────────────────────────────────────────┘
-┌─ CERTIFICATION ────────────────────────────────────────────┐
-│ review/ (planned) → provenance UI, SME sign-off, audit      │  the "100%" guarantee
-└─────────────────────────────────────────────────────────────┘
-┌─ LEARNING (planned) ───────────────────────────────────────┐
-│ learn/  → corrections -> few-shot bank -> SLM datasets      │  improves per protocol
-└─────────────────────────────────────────────────────────────┘
-┌─ DATA (planned, downstream) ───────────────────────────────┐
-│ graph/  → Neo4j property graph for SDTM automation          │
-└─────────────────────────────────────────────────────────────┘
+┌─ L0 · SUBSTRATE ────────────────────────────────────────────┐
+│ PyMuPDF: text layer, character bboxes, bookmarks/ToC          │  deterministic
+└──────────────────────────────────────────────────────────────┘
+┌─ L1 · LAYOUT & TABLES ──────────────────────────────────────┐
+│ Docling (layout, reading order) ∥ MinerU2.5 (table grids)     │  two engines
+└──────────────────────────────────────────────────────────────┘
+┌─ L2 · ★ MULTI-PAGE SoA STITCHER (custom) ───────────────────┐
+│ header-signature matching, cross-page reconciliation          │  the risk centre
+└──────────────────────────────────────────────────────────────┘
+┌─ L3 · ROUTING ──────────────────────────────────────────────┐
+│ section graph · study fingerprint · prohibited scopes          │
+└──────────────────────────────────────────────────────────────┘
+┌─ L4 · EXTRACTION ───────────────────────────────────────────┐
+│ sharded (<40 fields/call), narrow evidence windows             │
+└──────────────────────────────────────────────────────────────┘
+┌─ L5 · ★ GROUNDING ──────────────────────────────────────────┐
+│ verbatim quote → code resolves page/char/bbox → hard gate      │
+└──────────────────────────────────────────────────────────────┘
+┌─ L6 · ★ ASSURANCE ──────────────────────────────────────────┐
+│ multi-signal confidence → conformal threshold → triage         │  the moat
+└──────────────────────────────────────────────────────────────┘
+┌─ L7 · ASSEMBLY ─────────────────────────────────────────────┐
+│ sanitizer → usdm4 Assembler → per-section builder fallback     │
+└──────────────────────────────────────────────────────────────┘
+┌─ L8 · VALIDATION ───────────────────────────────────────────┐
+│ pydantic → d4k rules → CORE · rule→repair map · bounded repair │
+└──────────────────────────────────────────────────────────────┘
+┌─ L9 · CERTIFICATION ────────────────────────────────────────┐
+│ review UI · SME sign-off · Part 11 audit trail                 │  the "100%"
+└──────────────────────────────────────────────────────────────┘
 ```
 
-## The four market-beating mechanisms
+## Why this shape (evidence, not intuition)
 
-The published state of the art plateaus at ~89% field / ~76% SoA because systems share
-four weaknesses. Each has a concrete counter in this codebase:
+Published SOTA on protocol → USDM extraction plateaus around 89% field-level accuracy,
+and the dominant failure on long documents is **silent omission at high precision** — a
+system that looks confident and complete while quietly missing rows, visits or criteria
+([LongExtractionBench](https://www.micro1.ai/benchmark/long-extraction),
+[ExtractBench](https://arxiv.org/abs/2602.12247)). Every mechanism below targets that
+failure mode specifically.
 
-### 1. Multi-method ensemble (vs single-path extraction)
+### 1. No single model owns both a table's grid and its content
 
-Every field is produced by **≥2 independent methods** so that no single extractor's
-error becomes the system's error. Agreement auto-accepts; disagreement routes to review.
+A specialist table model (MinerU2.5, 1.2B) beats frontier vision-LLMs on table *structure*
+(88.2 vs 85.7 TEDS against Gemini-2.5-Pro), while vision-LLMs are stronger on *cell text*
+([MinerU2.5](https://arxiv.org/html/2509.22186v1), ACL 2025 xllm-1.2). L1 splits the job
+accordingly: specialist owns the grid, a vision-LLM fills cell content against that fixed
+grid.
 
-- Metadata (C1): a label-driven parser and a title-page layout parser (`extract/metadata.py`).
-- SoA: two independent table engines — `pdfplumber` (ruling lines) and PyMuPDF's
-  `find_tables()` — reconciled cell-by-cell (`extract/soa/`).
-- An LLM member (Claude) joins as an additional path when a key is present.
+### 2. Multi-page tables get a dedicated, custom layer
 
-Because two independent extractors must make the *same* mistake to fool the ensemble,
-precision on the agreed set rises well above either path alone.
+No available tool solves cross-page table continuation correctly — Docling does not merge
+across pages (open issue), MinerU merges but drops content on continuation pages (open
+bug). Clinical Schedule-of-Activities tables routinely span 3–6 pages, so **L2 is a
+purpose-built stitcher**, not a library call, gated against a hand-labelled set of real
+multi-page SoAs.
 
-### 2. Grounded verifier + calibrated confidence (vs uncalibrated confidence)
+### 3. Routing and scope discipline, not whole-document stuffing
 
-`assure/` checks each chosen value against the source span it was drawn from, and scores
-confidence from agreement + verifier verdict + method count. The confidence is *measured*,
-so the review triage (auto_accept / review / block) is trustworthy — reviewers spend
-attention where clinical risk is highest.
+Retrieval with chunk-level provenance beat whole-document context by **26 accuracy
+points** in the best published comparison. L3 classifies the protocol's family first (11
+documented families), builds a typed section graph, and enforces **prohibited scopes** so
+amendment-history text cannot leak into "current design" and an appendix sub-study cannot
+pollute the main schedule.
 
-### 3. Vision-first SoA geometry (vs reconstruction from flat text)
+### 4. Sharded extraction, two-pass emission
 
-The Schedule of Activities never routes through the prose extractor. Table geometry is
-read from the table structure directly (two independent engines), so merged headers and
-footnote-gated cells survive. A multimodal LLM member is a drop-in third path.
+Wide schemas fail outright — one benchmark measured **0% valid output** at 369 fields.
+L4 shards every call to under ~40 fields and ≤5 nesting levels, over a narrow, routed
+evidence window. Every call reasons in free text first, then emits constrained JSON —
+resolving the published tension between format constraints and reasoning quality at
+near-zero cost.
 
-### 4. Closed-loop learning (planned)
+### 5. Grounding is mandatory, and coordinates are never model output
 
-Every reviewer correction becomes a few-shot example and, later, SLM training data — so
-un-reviewed accuracy rises with each protocol. No competitor does this today.
+Every field arrives with a **verbatim quote**; our code — never the model — resolves it to
+a page, character offset and bounding box using the PDF's own character geometry
+(`ingest/` in L0). A failed exact-substring match is a hard reject. Published verbatim
+grounding lifts exact-match correctness from 19% to 93%
+([CogCanvas](https://arxiv.org/html/2601.00821v2)). This is also the layer that makes the
+system classically validatable under GAMP 5: deterministic string matching, not model
+judgment.
+
+### 6. Confidence is a fitted model, not a formula — and it is bounded, not just scored
+
+`assure/` fuses grounding-quality features (quote-verification outcome, text-layer vs OCR
+provenance, entailment score) with cross-model agreement, field type, and retrieval score
+into a calibrated confidence — published fused models reach **0.928 AUC** versus 0.705 for
+logprobs alone ([ExtractConf](https://arxiv.org/pdf/2606.24420)). On top of calibration, a
+**conformal threshold** gives a provable, if marginal, bound on the error rate among
+auto-accepted fields. **Ensemble agreement is one input feature here — not a precision
+guarantee.** Measured cross-model error correlation is 0.74–0.82
+([Oracle's Fingerprint](https://arxiv.org/pdf/2605.00844)), so "two paths agree ⇒ ~99%
+precision" does not hold and is not claimed.
+
+### 7. Completeness accounting defends against silent omission directly
+
+Each domain declares what it expects (visit count from design vs SoA columns; arm count vs
+cells) and reconciles against what was actually extracted. A mismatch is a first-class
+finding, not a silent pass — this is the direct countermeasure to the dominant failure mode
+identified in §0.
 
 ## Assemble on the ecosystem, don't reinvent it
 
@@ -78,9 +118,16 @@ USDM4-Assure builds the USDM entities through the **data4knowledge `usdm4`** pac
   codes offline via a bundled controlled-terminology cache,
 - the d4k rule engine and a wrapper around the official CDISC CORE engine (`validate/`).
 
-Our own value is the **Assurance layer** and the domain **extractors** — the parts that
-turn a PDF into structured, scored candidates. The [Conformance](conformance.md) page
-covers where the upstream assembler's current limits become ours.
+`usdm4` is GPL-3.0 — acceptable for internal use (not distribution) and recorded as a
+deliberate decision, not an oversight. Because the upstream Assembler's own corpus testing
+has shown real assembly failures, L7 wraps it with an input sanitizer and a per-section
+fallback to `usdm4.builder`, and every run reports an **assembler reliance ratio** rather
+than assuming the Assembler will simply work.
+
+Our own value is the **Grounding and Assurance layers** and the domain **extractors** — the
+parts that turn a PDF into structured, cited, scored candidates. The
+[Conformance](conformance.md) page covers where the upstream assembler's current limits
+become ours.
 
 ## The shared contracts
 
