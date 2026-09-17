@@ -11,12 +11,13 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "spikes"))
-from make_soa_fixture import build, ground_truth  # noqa: E402
+from make_soa_fixture import build, ground_truth
 
-from usdm4_assure.assemble.soa import build_soa  # noqa: E402
-from usdm4_assure.extract.soa.crossval import cross_validate  # noqa: E402
-from usdm4_assure.extract.soa.methods import (  # noqa: E402
-    extract_pdfplumber, extract_pymupdf,
+from usdm4_assure.assemble.soa import build_soa
+from usdm4_assure.extract.soa.crossval import cross_validate
+from usdm4_assure.extract.soa.methods import (
+    extract_pdfplumber,
+    extract_pymupdf,
 )
 
 

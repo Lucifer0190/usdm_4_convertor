@@ -11,9 +11,9 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "spikes"))
-from make_fixture import GROUND_TRUTH, build  # noqa: E402
+from make_fixture import GROUND_TRUTH, build
 
-from usdm4_assure.pipeline import run  # noqa: E402
+from usdm4_assure.pipeline import run
 
 
 @pytest.fixture(scope="module")
