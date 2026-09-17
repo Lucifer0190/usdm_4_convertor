@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from usdm4_assure.contracts import Document, FieldCandidate
+from usdm4_assure.contracts import Document, FieldCandidate, GroundedCandidate
 from usdm4_assure.llm.base import LLM
 
 DESIGN_FIELDS = ["studyType", "interventionModel"]
@@ -109,3 +109,20 @@ def extract_design(doc: Document, metadata_vals: dict, llm: LLM) -> tuple[
         de.arms_confidence = 0.8 if (ratio and len(arms) >= 2) else 0.55
         de.arms_decision = "auto_accept" if de.arms_confidence >= 0.8 else "review"
     return cands, de
+
+
+def extract_llm_grounded(doc: Document, llm: LLM) -> list[GroundedCandidate]:
+    """Two-pass, quote-grounded design-classification extraction (DESIGN.md L4/L5).
+
+    Independent of the deterministic ``extract_design`` heuristics above — an
+    LLM member's own read of the study-type/intervention-model language, each
+    value grounded to a verbatim quote. See
+    :mod:`usdm4_assure.llm.two_pass` for the shard mechanics.
+
+    Args:
+        doc: The ingested protocol document.
+        llm: The model member. Returns ``[]`` if unavailable.
+    """
+    from usdm4_assure.extract.shards import SHARD_C2_DESIGN
+    from usdm4_assure.llm.two_pass import extract_shard
+    return extract_shard(doc, llm, SHARD_C2_DESIGN)

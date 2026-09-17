@@ -16,7 +16,7 @@ import json
 import re
 from collections.abc import Iterable
 
-from usdm4_assure.contracts import Document, FieldCandidate
+from usdm4_assure.contracts import Document, FieldCandidate, GroundedCandidate
 from usdm4_assure.llm.base import LLM
 
 FIELDS = [
@@ -137,6 +137,28 @@ def extract_llm(doc: Document, llm: LLM) -> list[FieldCandidate]:
 
 # Back-compat alias.
 extract_claude = extract_llm
+
+
+def extract_llm_grounded(doc: Document, llm: LLM) -> list[GroundedCandidate]:
+    """Two-pass, quote-grounded metadata extraction (DESIGN.md L4/L5).
+
+    Replaces :func:`extract_llm`'s single-shot JSON call with a reasoning
+    pass followed by a JSON pass whose every value must carry a verbatim
+    quote, resolved against ``doc`` — never a model-emitted coordinate. See
+    :mod:`usdm4_assure.llm.two_pass` for the shard mechanics.
+
+    Args:
+        doc: The ingested protocol document.
+        llm: The model member. Returns ``[]`` if unavailable.
+
+    Returns:
+        One ``GroundedCandidate`` per field the model returned a value for;
+        a candidate whose ``quote.verify_pass`` is ``FAILED`` is ungrounded
+        and must not be auto-accepted.
+    """
+    from usdm4_assure.extract.shards import SHARD_C1_METADATA
+    from usdm4_assure.llm.two_pass import extract_shard
+    return extract_shard(doc, llm, SHARD_C1_METADATA)
 
 
 def extract_all(doc: Document, llms: LLM | Iterable[LLM]) -> list[FieldCandidate]:

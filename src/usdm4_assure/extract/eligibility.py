@@ -10,7 +10,10 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from usdm4_assure.contracts import Document
+from usdm4_assure.contracts import Document, GroundedCandidate
+from usdm4_assure.extract.shards import SHARD_C3_ELIGIBILITY
+from usdm4_assure.llm.base import LLM
+from usdm4_assure.llm.two_pass import extract_shard
 
 _AGE_RE = re.compile(r"aged?\s+(\d{1,3})\s*(?:to|-|–|through)\s*(\d{1,3})\s*years", re.IGNORECASE)
 _SPLIT_RE = re.compile(r"\s*\d+[.)]\s+")           # split on "1. " / "2) "
@@ -69,3 +72,18 @@ def extract_eligibility(doc: Document) -> EligibilityExtract:
     e.confidence = 0.8 if (n >= 2 and e.age_min is not None) else (0.6 if n else 0.0)
     e.decision = "auto_accept" if e.confidence >= 0.8 else "review"
     return e
+
+
+def extract_llm_grounded(doc: Document, llm: LLM) -> list[GroundedCandidate]:
+    """Two-pass, quote-grounded eligibility extraction (DESIGN.md L4/L5).
+
+    Independent of the deterministic ``extract_eligibility`` region parser
+    above. ``inclusionCriteria``/``exclusionCriteria`` values may be the full
+    verbatim criteria block rather than one candidate per item — see
+    :mod:`usdm4_assure.extract.shards` for the scoping note.
+
+    Args:
+        doc: The ingested protocol document.
+        llm: The model member. Returns ``[]`` if unavailable.
+    """
+    return extract_shard(doc, llm, SHARD_C3_ELIGIBILITY)

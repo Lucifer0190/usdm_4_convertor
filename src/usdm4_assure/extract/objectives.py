@@ -8,7 +8,10 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from usdm4_assure.contracts import Document
+from usdm4_assure.contracts import Document, GroundedCandidate
+from usdm4_assure.extract.shards import SHARD_C4_OBJECTIVES
+from usdm4_assure.llm.base import LLM
+from usdm4_assure.llm.two_pass import extract_shard
 
 
 @dataclass
@@ -51,3 +54,16 @@ def extract_objectives(doc: Document) -> ObjectivesExtract:
         o.confidence = 0.8 if o.items[0].endpoint else 0.6
         o.decision = "auto_accept" if o.confidence >= 0.8 else "review"
     return o
+
+
+def extract_llm_grounded(doc: Document, llm: LLM) -> list[GroundedCandidate]:
+    """Two-pass, quote-grounded objectives/endpoints extraction (DESIGN.md L4/L5).
+
+    Independent of the deterministic ``extract_objectives`` label parser
+    above. See :mod:`usdm4_assure.llm.two_pass` for the shard mechanics.
+
+    Args:
+        doc: The ingested protocol document.
+        llm: The model member. Returns ``[]`` if unavailable.
+    """
+    return extract_shard(doc, llm, SHARD_C4_OBJECTIVES)
