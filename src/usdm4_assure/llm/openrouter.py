@@ -7,17 +7,31 @@ slug can be selected per member.
 
 Model ids are OpenRouter slugs (verified against the live catalog) and can be
 overridden via ``OPENROUTER_MODEL_{HAIKU,SONNET,OPUS}`` environment variables.
+
+Every completion is content-addressed and cached (:mod:`usdm4_assure.llm.cache`):
+at ``temperature=0`` a call is a pure function of ``(model, messages, max_tokens)``,
+so re-running the eval harness or re-processing an unchanged protocol costs nothing
+after the first pass, and the cache key doubles as the audit trail's stable
+``prompt_hash``. Transient failures (429 rate limit, 5xx) are retried with
+exponential backoff before giving up.
 """
 from __future__ import annotations
 
 import os
+import time
 
 import requests
 
 from usdm4_assure.llm.base import LLM, ModelTier, tier_for
+from usdm4_assure.llm.cache import LLMCache, cache_key, default_cache
 from usdm4_assure.llm.config import openrouter_key
 
 _ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
+
+# Retryable HTTP statuses: 429 (rate limit) and 5xx (transient provider error).
+_RETRY_STATUSES = {429, 500, 502, 503, 504}
+_MAX_ATTEMPTS = 4
+_BACKOFF_BASE_SECONDS = 1.0
 
 # Default Claude tier -> OpenRouter slug (current catalog).
 _DEFAULT_TIER_MODEL: dict[ModelTier, str] = {
@@ -40,15 +54,19 @@ class OpenRouterLLM(LLM):
         name: Ensemble-member tag recorded in provenance (default ``"claude"``
             since Claude is the default family).
         timeout: Per-request timeout in seconds.
+        cache: Cache instance to use. Defaults to the process-wide
+            :func:`usdm4_assure.llm.cache.default_cache`. Pass ``False`` to
+            disable caching for this instance.
     """
 
     def __init__(self, model: str | None = None, name: str = "claude",
-                 timeout: float = 60.0) -> None:
+                 timeout: float = 60.0, cache: LLMCache | bool | None = None) -> None:
         self.api_key = openrouter_key()
         self.available = bool(self.api_key)
         self.model = model
         self.name = name
         self.timeout = timeout
+        self._cache = None if cache is False else (cache or default_cache())
 
     def complete(self, prompt: str, *, task: str = "extract_prose",
                  system: str | None = None, max_tokens: int = 1024) -> str:
@@ -65,7 +83,7 @@ class OpenRouterLLM(LLM):
             The assistant message text (empty string if the response is empty).
 
         Raises:
-            RuntimeError: If called without a key, or the HTTP call fails.
+            RuntimeError: If called without a key, or every retry attempt fails.
         """
         if not self.available:
             raise RuntimeError("OpenRouterLLM called without an OpenRouter key")
@@ -73,21 +91,49 @@ class OpenRouterLLM(LLM):
         messages = ([{"role": "system", "content": system}] if system else [])
         messages.append({"role": "user", "content": prompt})
 
-        resp = requests.post(
-            _ENDPOINT,
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-                # Optional attribution headers OpenRouter recommends.
-                "HTTP-Referer": "https://hexaware.com",
-                "X-Title": "USDM4-Assure",
-            },
-            json={"model": model, "messages": messages, "max_tokens": max_tokens},
-            timeout=self.timeout,
+        key = cache_key(model, messages, max_tokens)
+        if self._cache is not None:
+            cached = self._cache.get(key)
+            if cached is not None:
+                return cached
+
+        text = self._call_with_retry(model, messages, max_tokens)
+
+        if self._cache is not None:
+            self._cache.put(key, model=model, prompt_hash=key, response=text)
+        return text
+
+    def _call_with_retry(self, model: str, messages: list[dict], max_tokens: int) -> str:
+        last_error: Exception | None = None
+        for attempt in range(_MAX_ATTEMPTS):
+            try:
+                resp = requests.post(
+                    _ENDPOINT,
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                        # Optional attribution headers OpenRouter recommends.
+                        "HTTP-Referer": "https://hexaware.com",
+                        "X-Title": "USDM4-Assure",
+                    },
+                    json={"model": model, "messages": messages, "max_tokens": max_tokens},
+                    timeout=self.timeout,
+                )
+            except requests.RequestException as e:
+                last_error = e
+            else:
+                if resp.status_code == 200:
+                    choices = resp.json().get("choices", [])
+                    if not choices:
+                        return ""
+                    return choices[0].get("message", {}).get("content", "") or ""
+                if resp.status_code not in _RETRY_STATUSES:
+                    raise RuntimeError(f"OpenRouter {resp.status_code}: {resp.text[:200]}")
+                last_error = RuntimeError(f"OpenRouter {resp.status_code}: {resp.text[:200]}")
+
+            if attempt < _MAX_ATTEMPTS - 1:
+                time.sleep(_BACKOFF_BASE_SECONDS * (2 ** attempt))
+
+        raise RuntimeError(
+            f"OpenRouter call failed after {_MAX_ATTEMPTS} attempts: {last_error}"
         )
-        if resp.status_code != 200:
-            raise RuntimeError(f"OpenRouter {resp.status_code}: {resp.text[:200]}")
-        choices = resp.json().get("choices", [])
-        if not choices:
-            return ""
-        return choices[0].get("message", {}).get("content", "") or ""

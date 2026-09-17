@@ -50,7 +50,7 @@ def _find_wrapper_files(root: Path) -> list[Path]:
         try:
             with p.open(encoding="utf-8") as f:
                 head = json.load(f)
-        except Exception:  # noqa: BLE001 — not JSON, or unreadable; skip
+        except Exception:  # noqa: BLE001, S112 — not JSON, or unreadable; skip and keep scanning
             continue
         if isinstance(head, dict) and "study" in head and "usdmVersion" in head:
             hits.append(p)
@@ -64,7 +64,7 @@ def main() -> int:
     args = parser.parse_args()
 
     sys.path.insert(0, str(REPO_ROOT / "src"))
-    from usdm4_assure.validate.gate import validate_wrapper  # noqa: E402
+    from usdm4_assure.validate.gate import validate_wrapper
 
     if not CORPUS_ROOT.exists():
         print(f"Corpus not found at {CORPUS_ROOT}. Clone it first:\n"

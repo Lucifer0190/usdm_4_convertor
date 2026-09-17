@@ -7,6 +7,11 @@ Resolution order (Claude-first, per project direction):
 
 The pipeline calls :func:`get_llm` once; extractors and the verifier check the
 returned object's ``available`` flag and include it as an ensemble member if so.
+
+Set ``USDM4_REQUIRE_LLM=1`` to make a missing key a hard failure instead of a
+silent fall-through to the stub — useful for a Phase-0-style measurement run
+where a quietly-deterministic-only pass would produce a misleadingly low
+grounded-field count rather than an honest configuration error.
 """
 from __future__ import annotations
 
@@ -53,6 +58,11 @@ def get_llm(model: str | None = None) -> LLM:
     claude = ClaudeLLM()
     if claude.available:
         return claude
+    if os.environ.get("USDM4_REQUIRE_LLM"):
+        raise RuntimeError(
+            "USDM4_REQUIRE_LLM is set but no LLM key is configured "
+            "(OPEN_ROUTER_KEY/OPENROUTER_API_KEY or ANTHROPIC_API_KEY)."
+        )
     return StubLLM()
 
 
