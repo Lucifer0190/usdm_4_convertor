@@ -6,6 +6,29 @@ yet semantically versioned.
 
 ## [Unreleased]
 
+### Architecture (v0.3.1) — OpenRouter model tiering verified live
+- The v0.3 model-tiering table named `GLiNER-BioMed` and `MiniCheck-FT5` as though they
+  would be OpenRouter-served alongside the LLM tiers. Queried the live catalog
+  (`GET /api/v1/models`, 444 models, 2026-09-17) and confirmed this was wrong: OpenRouter
+  proxies providers' chat-completion APIs, not task-specific NER/NLI encoders, and it has
+  no path for a caller-uploaded fine-tuned checkpoint. Both models are relabeled
+  **self-hosted** (a deliberate infra decision, not a gap) across `PLAN.md`, `DESIGN.md`,
+  `architecture.html`, and `docs/development.md`.
+- Replaced every placeholder "Claude/GPT/Gemini via OpenRouter" reference with slugs
+  verified against the live catalog: `anthropic/claude-sonnet-4.5`, `openai/gpt-5.1`,
+  `google/gemini-3.1-pro-preview` (frontier tier, three separate families for genuine
+  cross-family verification), `qwen/qwen3-vl-30b-a3b-instruct` (a cheaper OpenRouter-native
+  vision pass for SoA cell content, ahead of a frontier-VLM fallback), `openai/gpt-oss-20b`
+  (cheapest capable model on the catalog — $0.03/$0.13 per M tokens — for section routing),
+  and `qwen/qwen3-8b` as a verified alternate SLM ensemble member alongside the existing
+  `meta-llama/llama-3.1-8b-instruct` default.
+- Confirmed the already-implemented code slugs (`llm/openrouter.py`,
+  `llm/config.py`) are all present on the live catalog — no code change needed, only the
+  design docs' aspirational entries.
+- Directly verified the logprobs-support gap instead of asserting it: `llama-3.1-8b-instruct`
+  lists `logprobs`/`top_logprobs` among its supported parameters; `claude-sonnet-4.5` lists
+  neither.
+
 ### Architecture (v0.3)
 - **Rewrote `DESIGN.md` and `docs/` against a published-literature review** (`PLAN.md`,
   new). Two v0.2 claims did not survive the review and are retracted rather than carried
