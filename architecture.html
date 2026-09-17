@@ -296,22 +296,24 @@ footer p{font-size:.76rem;color:var(--muted);line-height:1.6}
   <div class="sec-head">
     <span class="eyebrow">Model orchestration</span>
     <h2>OpenRouter gateway, SLM-tiered by evidence</h2>
-    <p>One gateway, many models, roles declared in config so any model is swappable without code changes. Small models are used wherever published benchmarks say they are good enough — which is more places than intuition suggests.</p>
+    <p>One gateway, many models, roles declared in config so any model is swappable without code changes. Small models are used wherever published benchmarks say they are good enough — which is more places than intuition suggests. Every OpenRouter slug below is verified live against the catalog (444 models, checked 2026-09-17), not assumed.</p>
   </div>
   <div class="tablewrap">
     <table>
       <thead><tr><th>Job</th><th>Model</th><th>Evidence</th></tr></thead>
       <tbody>
         <tr><td>Text layer, layout, table grids</td><td><span class="pill ext">PyMuPDF · Docling · MinerU2.5</span></td><td>Deterministic. A 1.2B specialist beats Gemini-2.5-Pro on table TEDS.</td></tr>
-        <tr><td>Entity spotting (drug, lab, visit, AE)</td><td><span class="pill slm">GLiNER-BioMed</span></td><td>59.8% zero-shot / 70.4% 10-shot F1, peer-reviewed; +39–568% throughput.</td></tr>
-        <tr><td>Quote-supports-value check</td><td><span class="pill slm">MiniCheck-FT5 · 770M</span></td><td>74.7% balanced accuracy ≈ GPT-4's 75.3%, at ~400× lower cost. Local, no egress.</td></tr>
-        <tr><td>Section routing / classification</td><td><span class="pill slm">small classifier</span></td><td>Structured generation measurably <em>helps</em> classification tasks.</td></tr>
-        <tr><td>High-volume narrow fields</td><td><span class="pill slm">QLoRA 8B (once labelled)</span></td><td>90.0% exact match — statistically non-inferior to a second human annotator.</td></tr>
-        <tr><td>SoA cell content · estimands · amendments</td><td><span class="pill claude">Frontier via OpenRouter</span></td><td>Cross-section reasoning; small models sit far below the 44.9% F1 long-doc ceiling.</td></tr>
+        <tr><td>Entity spotting (drug, lab, visit, AE)</td><td><span class="pill ext">GLiNER-BioMed · self-hosted</span></td><td>59.8% zero-shot / 70.4% 10-shot F1, peer-reviewed; +39–568% throughput. Not an OpenRouter model — no chat endpoint exists for a token-classification encoder, so this runs on our own inference, not the gateway.</td></tr>
+        <tr><td>Quote-supports-value check</td><td><span class="pill ext">MiniCheck-FT5 · 770M · self-hosted</span></td><td>74.7% balanced accuracy ≈ GPT-4's 75.3%, at ~400× lower cost. Local, no egress — and, like GLiNER, not something OpenRouter serves.</td></tr>
+        <tr><td>Section routing / classification</td><td><span class="pill slm">openai/gpt-oss-20b · OpenRouter</span></td><td>Cheapest capable model on the live catalog (131k ctx, $0.03 / $0.13 per M tok). Structured generation measurably <em>helps</em> classification tasks.</td></tr>
+        <tr><td>SLM ensemble member (independent family)</td><td><span class="pill slm">meta-llama/llama-3.1-8b-instruct · OpenRouter</span></td><td>Already implemented default; lifted metadata auto-accept 1/6 → 5/6 on the reference fixture. <code>qwen/qwen3-8b</code> verified as a newer-architecture alternate.</td></tr>
+        <tr><td>High-volume narrow fields</td><td><span class="pill slm">QLoRA on Llama-3.1-8B/Qwen3-8B · self-hosted</span></td><td>90.0% exact match — statistically non-inferior to a second human annotator. OpenRouter does not accept caller-uploaded fine-tunes, so the tuned checkpoint runs on our own inference; the untuned base slug stays on OpenRouter as the fallback.</td></tr>
+        <tr><td>SoA cell content, first pass</td><td><span class="pill slm">qwen/qwen3-vl-30b-a3b-instruct · OpenRouter</span></td><td>Vision-capable MoE, verified live — cheaper than routing every table cell through the frontier tier.</td></tr>
+        <tr><td>Estimands · amendments · cross-section reasoning · vision fallback</td><td><span class="pill claude">claude-sonnet-4.5 · gpt-5.1 · gemini-3.1-pro-preview · via OpenRouter</span></td><td>Three separate families, verified live, so cross-family verification (ρ=0.54 cross vs 0.77 within) is a real option, not a plan. Small models sit far below the 44.9% F1 long-doc ceiling.</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="note">Logprobs are never load-bearing — OpenRouter accepts the parameter but not every provider honours it (Anthropic returns none), so a logprob-dependent design breaks silently on a model swap. Cross-family verification only, on the uncertain subset; never let the extracting model judge its own output (self-preference bias up to +90%). If sampling for self-consistency, vote in YAML or free text then emit JSON once — JSON grammars collapse answer diversity from 41% to 64% modal share. All prompts version-controlled and hashed into the audit trail.</p>
+  <p class="note">Logprobs are never load-bearing — OpenRouter accepts the parameter but not every provider honours it: verified live, <code>llama-3.1-8b-instruct</code> exposes <code>logprobs</code>/<code>top_logprobs</code>, <code>claude-sonnet-4.5</code> exposes neither. A logprob-dependent design breaks silently on that swap. Cross-family verification only, on the uncertain subset; never let the extracting model judge its own output (self-preference bias up to +90%). If sampling for self-consistency, vote in YAML or free text then emit JSON once — JSON grammars collapse answer diversity from 41% to 64% modal share. All prompts version-controlled and hashed into the audit trail.</p>
 </section>
 
 <hr class="divider">
