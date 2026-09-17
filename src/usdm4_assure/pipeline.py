@@ -14,16 +14,54 @@ rewrite. See ``docs/pipeline.md`` for the data-flow contracts.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from usdm4_assure.assemble.metadata import assemble_metadata
 from usdm4_assure.assure import assure
-from usdm4_assure.contracts import AssuredField, Decision
+from usdm4_assure.contracts import AssuredField, Decision, FieldCandidate
 from usdm4_assure.extract import metadata as c1
+from usdm4_assure.extract.design import DESIGN_FIELDS
+from usdm4_assure.extract.eligibility import EligibilityExtract
+from usdm4_assure.extract.objectives import ObjectivesExtract
+from usdm4_assure.extract.shards import ELIGIBILITY_FIELDS, OBJECTIVES_FIELDS
 from usdm4_assure.ingest.pdf import ingest
 from usdm4_assure.llm.router import get_llm
 from usdm4_assure.validate.gate import validate_wrapper
+
+
+def _eligibility_candidates(e: EligibilityExtract) -> list[FieldCandidate]:
+    """Bridge the C3 deterministic extract into field-level candidates for
+    :func:`assure`, so eligibility drops its own ad hoc confidence/decision
+    in favor of the one uniform assurance path (DESIGN.md L6)."""
+    cands: list[FieldCandidate] = []
+    if e.inclusion:
+        text = " ".join(e.inclusion)
+        cands.append(FieldCandidate("inclusionCriteria", text, "region-parser", text))
+    if e.exclusion:
+        text = " ".join(e.exclusion)
+        cands.append(FieldCandidate("exclusionCriteria", text, "region-parser", text))
+    if e.age_min is not None:
+        v = str(e.age_min)
+        cands.append(FieldCandidate("plannedMinimumAge", v, "region-parser", v))
+    if e.age_max is not None:
+        v = str(e.age_max)
+        cands.append(FieldCandidate("plannedMaximumAge", v, "region-parser", v))
+    cands.append(FieldCandidate("plannedSex", e.sex, "region-parser", e.sex))
+    return cands
+
+
+def _objectives_candidates(o: ObjectivesExtract) -> list[FieldCandidate]:
+    """Bridge the C4 deterministic extract into field-level candidates for
+    :func:`assure` (see :func:`_eligibility_candidates`)."""
+    cands: list[FieldCandidate] = []
+    for item in o.items:
+        obj_field = "primaryObjective" if item.level == "Primary" else "secondaryObjective"
+        cands.append(FieldCandidate(obj_field, item.objective, "label-parser", item.objective))
+        if item.endpoint:
+            end_field = "primaryEndpoint" if item.level == "Primary" else "secondaryEndpoint"
+            cands.append(FieldCandidate(end_field, item.endpoint, "label-parser", item.endpoint))
+    return cands
 
 
 @dataclass
@@ -38,6 +76,10 @@ class FullResult:
         out_dir: Directory the artifacts were written to.
         eligibility: The ``EligibilityExtract`` (C3), or ``None``.
         objectives: The ``ObjectivesExtract`` (C4), or ``None``.
+        assured_design: C2's scalar fields (studyType, interventionModel)
+            after the Assurance layer.
+        assured_eligibility: C3's fields after the Assurance layer.
+        assured_objectives: C4's fields after the Assurance layer.
     """
     assured_meta: list[AssuredField]
     design: object
@@ -46,6 +88,9 @@ class FullResult:
     out_dir: Path
     eligibility: object = None
     objectives: object = None
+    assured_design: list[AssuredField] = field(default_factory=list)
+    assured_eligibility: list[AssuredField] = field(default_factory=list)
+    assured_objectives: list[AssuredField] = field(default_factory=list)
 
 
 def run_full(pdf_path: str | Path, out_dir: str | Path = "data/out_full",
@@ -80,18 +125,36 @@ def run_full(pdf_path: str | Path, out_dir: str | Path = "data/out_full",
     doc = ingest(pdf_path, image_dir=out_dir / "pages")
     members = _members(use_slm)
 
-    assured_meta = assure(c1.extract_all(doc, members), doc, c1.FIELDS)
+    assured_meta = assure(c1.extract_all(doc, members), doc, c1.FIELDS, domain="metadata")
     meta = {a.field: a.value for a in assured_meta if a.value}
-    _, design = extract_design(doc, meta, members[0])
+    design_cands, design = extract_design(doc, meta, members[0])
+    assured_design = assure(design_cands, doc, DESIGN_FIELDS, domain="design")
     elig = extract_eligibility(doc)
+    assured_eligibility = assure(_eligibility_candidates(elig), doc, ELIGIBILITY_FIELDS,
+                                 domain="eligibility")
     objs = extract_objectives(doc)
+    assured_objectives = assure(_objectives_candidates(objs), doc, OBJECTIVES_FIELDS,
+                                domain="objectives")
     grid = cross_validate([extract_pdfplumber(pdf_path), extract_pymupdf(pdf_path)])
 
     study = build_full_study(assured_meta, design, grid, elig, objs, run_core=run_core)
     if study.get("wrapper"):
         (out_dir / "study.usdm.json").write_text(
             json.dumps(study["wrapper"], indent=2, default=str), encoding="utf-8")
-    return FullResult(assured_meta, design, grid, study, out_dir, elig, objs)
+
+    all_assured = assured_meta + assured_design + assured_eligibility + assured_objectives
+    review = {
+        "source": str(pdf_path),
+        "decision_summary": {d.value: 0 for d in Decision},
+        "fields": [a.as_review_row() for a in all_assured],
+        "validation": study.get("validation"),
+    }
+    for a in all_assured:
+        review["decision_summary"][a.decision.value] += 1
+    (out_dir / "review.json").write_text(json.dumps(review, indent=2), encoding="utf-8")
+
+    return FullResult(assured_meta, design, grid, study, out_dir, elig, objs,
+                      assured_design, assured_eligibility, assured_objectives)
 
 
 @dataclass
@@ -165,7 +228,7 @@ def run(pdf_path: str | Path, out_dir: str | Path = "data/out",
     candidates = c1.extract_all(doc, members)
 
     # Assurance ★
-    assured = assure(candidates, doc, c1.FIELDS)
+    assured = assure(candidates, doc, c1.FIELDS, domain="metadata")
 
     # Integrity: assemble -> validate
     wrapper = assemble_metadata(assured)
