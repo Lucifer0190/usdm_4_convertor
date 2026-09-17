@@ -24,7 +24,7 @@ import requests
 
 from usdm4_assure.llm.base import LLM, ModelTier, tier_for
 from usdm4_assure.llm.cache import LLMCache, cache_key, default_cache
-from usdm4_assure.llm.config import openrouter_key
+from usdm4_assure.llm.config import model_for, openrouter_key
 
 _ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -50,7 +50,10 @@ class OpenRouterLLM(LLM):
 
     Args:
         model: Explicit OpenRouter slug to force one model for every task. When
-            ``None`` the model is chosen per task from the Claude tier map.
+            ``None`` and ``role`` is also ``None``, the model is chosen per task
+            from the Claude tier map (legacy behavior).
+        role: Role name (e.g., 'extract', 'verify') for role-based model routing.
+            Ignored if ``model`` is set (explicit model takes precedence).
         name: Ensemble-member tag recorded in provenance (default ``"claude"``
             since Claude is the default family).
         timeout: Per-request timeout in seconds.
@@ -59,11 +62,13 @@ class OpenRouterLLM(LLM):
             disable caching for this instance.
     """
 
-    def __init__(self, model: str | None = None, name: str = "claude",
-                 timeout: float = 60.0, cache: LLMCache | bool | None = None) -> None:
+    def __init__(self, model: str | None = None, role: str | None = None,
+                 name: str = "claude", timeout: float = 60.0,
+                 cache: LLMCache | bool | None = None) -> None:
         self.api_key = openrouter_key()
         self.available = bool(self.api_key)
         self.model = model
+        self.role = role
         self.name = name
         self.timeout = timeout
         self._cache = None if cache is False else (cache or default_cache())
@@ -87,7 +92,12 @@ class OpenRouterLLM(LLM):
         """
         if not self.available:
             raise RuntimeError("OpenRouterLLM called without an OpenRouter key")
-        model = self.model or _tier_model(tier_for(task))
+        if self.model:
+            model = self.model
+        elif self.role:
+            model = model_for(self.role)
+        else:
+            model = _tier_model(tier_for(task))
         messages = ([{"role": "system", "content": system}] if system else [])
         messages.append({"role": "user", "content": prompt})
 

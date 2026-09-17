@@ -34,3 +34,32 @@ def openrouter_key() -> str | None:
 def slm_model() -> str:
     """Return the configured SLM model slug (env override or default)."""
     return os.environ.get("OPENROUTER_SLM_MODEL", DEFAULT_SLM_MODEL)
+
+
+_DEFAULT_ROLE_MODELS: dict[str, str] = {
+    "extract": "anthropic/claude-sonnet-4.5",
+    "extract_alt": "openai/gpt-5.1",
+    "verify": "google/gemini-3.1-pro-preview",
+    "vision": "google/gemini-3.1-pro-preview",
+    "vision_alt": "anthropic/claude-sonnet-4.5",
+    "hard_reasoning": "anthropic/claude-opus-4.8",
+    "route": "anthropic/claude-sonnet-4.5",
+}
+
+
+def model_for(role: str) -> str:
+    """Return the OpenRouter model slug for a role (env override or default).
+
+    Args:
+        role: Role name (e.g., 'extract', 'verify', 'hard_reasoning').
+
+    Returns:
+        An OpenRouter model slug, overridable via ``USDM4_MODEL_<ROLE>``
+        (e.g., ``USDM4_MODEL_EXTRACT`` for the 'extract' role).
+
+    Raises:
+        KeyError: If the role is not recognized.
+    """
+    if role not in _DEFAULT_ROLE_MODELS:
+        raise KeyError(f"Unknown role: {role}")
+    return os.environ.get(f"USDM4_MODEL_{role.upper()}", _DEFAULT_ROLE_MODELS[role])
