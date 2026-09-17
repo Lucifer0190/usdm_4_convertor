@@ -5,7 +5,7 @@ description = "AI pipeline converting clinical protocols to conformant USDM 4.0,
 readme = "README.md"
 requires-python = ">=3.11,<3.13"   # SPIKE FINDING: cdisc-rules-engine (via usdm4) has no py3.13 wheel yet
 dependencies = [
-  "usdm4>=0.28.0",         # data4knowledge USDM 4.0 pydantic model + validate + CORE facade
+  "usdm4==0.29.0",          # pinned exact — see PINS.md
   "pydantic>=2.7",
   "pymupdf>=1.24",          # PDF text + coords + page-image render
   "pdfplumber>=0.11",       # table-candidate detection
@@ -19,7 +19,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # CORE engine ships transitively via usdm4 -> cdisc-rules-engine (USDM4().validate_core()).
-dev = ["pytest>=8", "ruff>=0.6"]
+dev = ["pytest>=8", "ruff>=0.6", "reportlab>=4.0"]  # reportlab: spike PDF fixture generators
 docs = ["mkdocs-material>=9.5"]
 
 [project.scripts]
@@ -35,3 +35,9 @@ where = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.pytest.ini_options]
+# Scope discovery to our own suite. Without this, pytest also tries to collect
+# the vendored usdm4/usdm source clones under spikes/_work/ (gitignored, cloned
+# for reference/measurement, not meant to run as part of our suite).
+testpaths = ["tests"]
