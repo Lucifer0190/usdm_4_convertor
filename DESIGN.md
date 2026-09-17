@@ -279,14 +279,24 @@ All traffic runs through **OpenRouter** behind `llm/router.py`, with roles decla
 config so any model is swappable per role without code changes. Already implemented:
 `llm/openrouter.py`, `llm/config.py`, a Claude tier ladder, and a Llama-3.1-8B SLM member.
 
+**What OpenRouter is, precisely.** It proxies providers' hosted chat-completion APIs. It
+does not host task-specific NER/NLI encoders (no chat endpoint exists for them to serve),
+and it does not accept caller-uploaded fine-tuned checkpoints. Confirmed against the live
+catalog (`GET /api/v1/models`, 444 entries, checked 2026-09-17): `GLiNER-BioMed` and
+`MiniCheck-FT5` are not there, and were never going to be — a prior draft of this table
+implied otherwise. That splits "SLM" into two genuinely different tiers below, both
+legitimately called SLM in the literature but only one of them behind the OpenRouter switch.
+
 | Tier | Component | Job | Evidence |
 |---|---|---|---|
-| Deterministic | PyMuPDF · Docling · MinerU2.5 | text, layout, table grids, stitching | 1.2B specialist beats Gemini-2.5-Pro on TEDS |
-| SLM (local) | **GLiNER-BioMed** | drug / procedure / lab / visit / AE spotting | **59.8%** zero-shot, **70.4%** 10-shot F1 |
-| SLM (local) | **MiniCheck-FT5 (770M)** | does the quote support the value? | **74.7% ≈ GPT-4's 75.3%, ~400× cheaper** |
-| SLM (local) | small classifier | section routing, SoA-vs-narrative | structured generation helps classification |
-| SLM (tuned) | QLoRA Llama-3.1-8B / Qwen3-8B | high-volume narrow fields, once labels exist | **90.0% exact match, non-inferior to a 2nd human annotator** |
-| Frontier | Claude / GPT / Gemini | SoA cell content, estimands, amendment diffs, cross-section reasoning | small models far below the 44.9% F1 long-doc ceiling |
+| Deterministic (local) | PyMuPDF · Docling · MinerU2.5 | text, layout, table grids, stitching | 1.2B specialist beats Gemini-2.5-Pro on TEDS |
+| **Self-hosted encoder** (not OpenRouter) | **GLiNER-BioMed** | drug / procedure / lab / visit / AE spotting | **59.8%** zero-shot, **70.4%** 10-shot F1 |
+| **Self-hosted encoder** (not OpenRouter) | **MiniCheck-FT5 (770M)** | does the quote support the value? | **74.7% ≈ GPT-4's 75.3%, ~400× cheaper** |
+| SLM, via OpenRouter | `openai/gpt-oss-20b` (verified live: 131k ctx, $0.03/$0.13 per M tok — cheapest capable model on the catalog) | section routing, SoA-vs-narrative | structured generation helps classification |
+| SLM ensemble member, via OpenRouter | `meta-llama/llama-3.1-8b-instruct` (current default) or `qwen/qwen3-8b` (newer arch, verified live) | independent metadata/design member from a different family than the extractor | already implemented; lifted metadata auto-accept 1/6 → 5/6 on the reference fixture |
+| SLM, tuned (once labels exist) | QLoRA on a **self-hosted** copy of `meta-llama/llama-3.1-8b-instruct` or `qwen/qwen3-8b` | high-volume narrow fields | **90.0% exact match, non-inferior to a 2nd human annotator.** OpenRouter can't serve caller-uploaded weights; tuned checkpoints run on our own inference (vLLM/TGI) or a dedicated-deployment provider, with the untuned base slug staying available via OpenRouter as the pre-tuning fallback |
+| Frontier, via OpenRouter | `anthropic/claude-sonnet-4.5` (primary) · `openai/gpt-5.1` (cross-family verifier) · `google/gemini-3.1-pro-preview` (vision fallback) — all verified live | SoA cell content, estimands, amendment diffs, cross-section reasoning | small models far below the 44.9% F1 long-doc ceiling |
+| Vision cell pass, via OpenRouter | `qwen/qwen3-vl-30b-a3b-instruct` (verified live, vision-capable MoE) | first-pass SoA cell reading before a frontier VLM fallback on disagreement | cheaper than routing every cell through the frontier tier |
 
 **Rules.**
 - **Cross-family verification only** (ρ = 0.54 cross vs 0.77 within), and **verify only the
