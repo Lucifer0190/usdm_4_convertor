@@ -22,8 +22,8 @@ but they unlock additional capability.
 
 | Variable | Unlocks |
 |---|---|
-| `OPEN_ROUTER_KEY` | **The default LLM gateway.** [OpenRouter](https://openrouter.ai) fronts many providers behind one key, so the ensemble can mix model families. The pipeline defaults to Claude (tiered: Haiku / Sonnet 4.5 / Opus 4.8). Override a tier with `OPENROUTER_MODEL_{HAIKU,SONNET,OPUS}`. |
-| `OPENROUTER_SLM_MODEL` | The small-model member used with `--slm` (default `meta-llama/llama-3.1-8b-instruct`, ~$0.05/$0.08 per M). See [the SLM note](#the-slm-member) below. |
+| `OPEN_ROUTER_KEY` | **The default LLM gateway.** [OpenRouter](https://openrouter.ai) fronts many providers behind one key, so the ensemble can mix model families. The pipeline defaults to frontier models (Claude Sonnet 4.5, GPT-5.1, Gemini 3.1 Pro). Override with `USDM4_MODEL_<ROLE>` (e.g., `USDM4_MODEL_EXTRACT=anthropic/claude-opus-4.8`). |
+| `USDM4_REQUIRE_LLM` | Set to `1` to hard-fail if no API key is configured (instead of silently falling back to stub). |
 | `ANTHROPIC_API_KEY` | Fallback direct-Anthropic path, used only if no OpenRouter key is set. |
 | `CDISC_LIBRARY_API_KEY` | The official CDISC CORE gate (`convert-full --core`) and controlled-terminology lookups. Free to register at the CDISC Library. |
 
@@ -37,32 +37,23 @@ With a key present, the Claude member joins the Assurance ensemble as an additio
 independent path, which lifts agreement and auto-accept (e.g. metadata auto-accept went
 from 1/6 to 5/6 on the reference fixture).
 
-### The SLM member
+### Role-based model selection
 
-Pass `--slm` to `convert` / `convert-full` to add a **small model as a second, different
-family** in the metadata ensemble (default `meta-llama/llama-3.1-8b-instruct`). Off by
-default for cost control.
+Models are selected by role (e.g., `extract`, `verify`, `vision`) not by tier. See
+`config/models.yaml` for the mapping and [`../PLAN.md`](../PLAN.md) §4.1 for the rationale
+behind each choice. **All roles use frontier models by default** (Claude Sonnet 4.5, GPT-5.1,
+Gemini 3.1 Pro). Override any role with `USDM4_MODEL_<ROLE>` environment variable
+(e.g., `USDM4_MODEL_VERIFY=anthropic/claude-opus-4.8`).
 
-> **v0.3 note — not every "SLM" in this design goes through OpenRouter.** OpenRouter
-> proxies providers' chat-completion APIs; it has no catalog entry for a task-specific
-> NER/NLI encoder and no path for a caller-uploaded fine-tuned checkpoint. `GLiNER-BioMed`
-> and `MiniCheck-FT5` (planned, [`../PLAN.md`](../PLAN.md) §4) are **self-hosted**, not an
-> `OPENROUTER_MODEL_*` value — don't spend time looking for their slug on OpenRouter. Every
-> slug that *is* claimed to be on OpenRouter in this doc set has been checked against the
-> live catalog (`GET /api/v1/models`) rather than assumed; re-check before citing a new one,
-> since the catalog changes over time.
-
-> **Note:** OpenRouter hosts **no clinically fine-tuned model** (checked across 60
-> providers / 411 models — the only "medical" hits are `mistral-medium`, a general
-> model). We therefore use a small, cheap, medically-competent *general* model. Llama 3.1
-> 8B is the design's cited choice (a distilled 8B beat its 70B teacher on
-> eligibility-criteria extraction). A true clinical SLM would require fine-tuning — the
-> Learning-layer path (reviewer corrections → SLM training data), not an off-the-shelf slug.
-
-Why it helps: a different-family model that *independently agrees* with Claude is a
-stronger signal than agreement between a model and a regex. On the reference fixture,
-adding the SLM took metadata from 5/6 to **6/6 auto-accept** — the SLM and Claude
-independently produced the same study title, resolving the one field that was in review.
+> **v0.3 note — SLM experimental opt-in:** Earlier versions used small models like
+> Llama-3.1-8B as a second ensemble member to improve metadata auto-accept. Published
+> evidence shows frontier models now outperform SLMs in every measured domain (see
+> [`../PLAN.md`](../PLAN.md) §4.2). The `--slm` flag is parked but not removed — if a
+> future eval shows a domain where frontier accuracy falls below an SLM's published
+> benchmark, that SLM can return via config change only. OpenRouter has no clinical
+> fine-tuned model in its catalog (checked 60 providers / 411 models); a true clinical
+> SLM would require fine-tuning from reviewer corrections, part of the Learning layer
+> planned for Phase 5+.
 
 ### Tests never call a live model
 

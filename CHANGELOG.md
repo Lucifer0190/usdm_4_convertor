@@ -6,28 +6,38 @@ yet semantically versioned.
 
 ## [Unreleased]
 
-### Architecture (v0.3.1) — OpenRouter model tiering verified live
-- The v0.3 model-tiering table named `GLiNER-BioMed` and `MiniCheck-FT5` as though they
-  would be OpenRouter-served alongside the LLM tiers. Queried the live catalog
-  (`GET /api/v1/models`, 444 models, 2026-09-17) and confirmed this was wrong: OpenRouter
-  proxies providers' chat-completion APIs, not task-specific NER/NLI encoders, and it has
-  no path for a caller-uploaded fine-tuned checkpoint. Both models are relabeled
-  **self-hosted** (a deliberate infra decision, not a gap) across `PLAN.md`, `DESIGN.md`,
-  `architecture.html`, and `docs/development.md`.
-- Replaced every placeholder "Claude/GPT/Gemini via OpenRouter" reference with slugs
-  verified against the live catalog: `anthropic/claude-sonnet-4.5`, `openai/gpt-5.1`,
-  `google/gemini-3.1-pro-preview` (frontier tier, three separate families for genuine
-  cross-family verification), `qwen/qwen3-vl-30b-a3b-instruct` (a cheaper OpenRouter-native
-  vision pass for SoA cell content, ahead of a frontier-VLM fallback), `openai/gpt-oss-20b`
-  (cheapest capable model on the catalog — $0.03/$0.13 per M tokens — for section routing),
-  and `qwen/qwen3-8b` as a verified alternate SLM ensemble member alongside the existing
-  `meta-llama/llama-3.1-8b-instruct` default.
-- Confirmed the already-implemented code slugs (`llm/openrouter.py`,
-  `llm/config.py`) are all present on the live catalog — no code change needed, only the
-  design docs' aspirational entries.
-- Directly verified the logprobs-support gap instead of asserting it: `llama-3.1-8b-instruct`
-  lists `logprobs`/`top_logprobs` among its supported parameters; `claude-sonnet-4.5` lists
-  neither.
+### Architecture (v0.3.1) — Frontier-only model strategy, verified live
+
+**Major change:** v0.3 proposed SLM-tiered extraction (cheap small models like Llama-3.1-8B
+and gpt-oss-20b for specific roles to cut cost). Re-analyzed the published evidence in
+`PLAN.md` §4.2 and found that **frontier models outperform small models in every measured
+domain**. Updated the strategy to accuracy-first: frontier LLMs are the default for all
+roles, and SLMs are used only when empirically proven to beat frontier on that task. One
+specialist survives this test: **MinerU2.5 beats Gemini-2.5-Pro on table structure (88.2 vs
+85.7 TEDS).**
+
+The following changes reflect this:
+- Removed SLM ensemble member (Llama-3.1-8B) from the extraction path — cross-family
+  verification now uses `openai/gpt-5.1` (different family, frontier accuracy).
+- Removed cheap small-model routing (gpt-oss-20b for section classification) — deterministic
+  signals (bookmarks, ToC, headings) now handle most routing; residue goes to frontier LLM.
+- Removed `qwen3-vl-30b-a3b-instruct` SoA cell first-pass — frontier VLM now handles all
+  cell extraction with cross-family checks.
+- Documented cost control via disk cache (re-runs free after first pass) and verification
+  on the uncertain subset only, not via model downgrade.
+- Updated `PLAN.md` §4, `DESIGN.md` §4, `architecture.html` model tables, `docs/development.md`
+  to reflect frontier-only roles in `config/models.yaml`.
+
+Earlier verification (live catalog):
+- Queried the live catalog (`GET /api/v1/models`, 444 models, 2026-09-17) and confirmed
+  OpenRouter proxies only chat-completion APIs, not task-specific NER/NLI encoders or
+  caller-uploaded fine-tuned checkpoints. `GLiNER-BioMed` and `MiniCheck-FT5` are
+  **self-hosted**, not OpenRouter-served — a deliberate infrastructure decision.
+- Verified frontier tier slugs against catalog: `anthropic/claude-sonnet-4.5`,
+  `openai/gpt-5.1`, `google/gemini-3.1-pro-preview` (three families for cross-family
+  verification).
+- Confirmed logprobs support gap: `llama-3.1-8b-instruct` lists `logprobs`/`top_logprobs`;
+  `claude-sonnet-4.5` does not.
 
 ### Architecture (v0.3)
 - **Rewrote `DESIGN.md` and `docs/` against a published-literature review** (`PLAN.md`,

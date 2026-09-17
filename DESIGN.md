@@ -273,30 +273,35 @@ accumulates labels automatically.
 
 ---
 
-## 4. Model orchestration — OpenRouter switch, SLM-tiered
+## 4. Model orchestration — Frontier LLMs + MinerU2.5
 
 All traffic runs through **OpenRouter** behind `llm/router.py`, with roles declared in
-config so any model is swappable per role without code changes. Already implemented:
-`llm/openrouter.py`, `llm/config.py`, a Claude tier ladder, and a Llama-3.1-8B SLM member.
+`config/models.yaml` so any model is swappable per role without code changes. Already
+implemented: `llm/openrouter.py`, `llm/config.py`, and role-based routing.
+
+**Strategy: accuracy first.** Frontier models (Claude Sonnet 4.5, GPT-5.1, Gemini 3.1 Pro)
+are the default for all roles. Small models (Llama-3.1-8B, Qwen, gpt-oss-20b) are not in the
+design — the published evidence shows frontier models outperform them in every measured
+domain. **The one specialist that survives:** MinerU2.5 (1.2B) beats Gemini-2.5-Pro on
+table structure extraction (88.2 TEDS vs 85.7).
 
 **What OpenRouter is, precisely.** It proxies providers' hosted chat-completion APIs. It
 does not host task-specific NER/NLI encoders (no chat endpoint exists for them to serve),
 and it does not accept caller-uploaded fine-tuned checkpoints. Confirmed against the live
 catalog (`GET /api/v1/models`, 444 entries, checked 2026-09-17): `GLiNER-BioMed` and
-`MiniCheck-FT5` are not there, and were never going to be — a prior draft of this table
-implied otherwise. That splits "SLM" into two genuinely different tiers below, both
-legitimately called SLM in the literature but only one of them behind the OpenRouter switch.
+`MiniCheck-FT5` are not there, and were never going to be. Task-specific encoders run
+locally (CPU-viable for both) if needed; they are not behind OpenRouter.
 
-| Tier | Component | Job | Evidence |
-|---|---|---|---|
-| Deterministic (local) | PyMuPDF · Docling · MinerU2.5 | text, layout, table grids, stitching | 1.2B specialist beats Gemini-2.5-Pro on TEDS |
-| **Self-hosted encoder** (not OpenRouter) | **GLiNER-BioMed** | drug / procedure / lab / visit / AE spotting | **59.8%** zero-shot, **70.4%** 10-shot F1 |
-| **Self-hosted encoder** (not OpenRouter) | **MiniCheck-FT5 (770M)** | does the quote support the value? | **74.7% ≈ GPT-4's 75.3%, ~400× cheaper** |
-| SLM, via OpenRouter | `openai/gpt-oss-20b` (verified live: 131k ctx, $0.03/$0.13 per M tok — cheapest capable model on the catalog) | section routing, SoA-vs-narrative | structured generation helps classification |
-| SLM ensemble member, via OpenRouter | `meta-llama/llama-3.1-8b-instruct` (current default) or `qwen/qwen3-8b` (newer arch, verified live) | independent metadata/design member from a different family than the extractor | already implemented; lifted metadata auto-accept 1/6 → 5/6 on the reference fixture |
-| SLM, tuned (once labels exist) | QLoRA on a **self-hosted** copy of `meta-llama/llama-3.1-8b-instruct` or `qwen/qwen3-8b` | high-volume narrow fields | **90.0% exact match, non-inferior to a 2nd human annotator.** OpenRouter can't serve caller-uploaded weights; tuned checkpoints run on our own inference (vLLM/TGI) or a dedicated-deployment provider, with the untuned base slug staying available via OpenRouter as the pre-tuning fallback |
-| Frontier, via OpenRouter | `anthropic/claude-sonnet-4.5` (primary) · `openai/gpt-5.1` (cross-family verifier) · `google/gemini-3.1-pro-preview` (vision fallback) — all verified live | SoA cell content, estimands, amendment diffs, cross-section reasoning | small models far below the 44.9% F1 long-doc ceiling |
-| Vision cell pass, via OpenRouter | `qwen/qwen3-vl-30b-a3b-instruct` (verified live, vision-capable MoE) | first-pass SoA cell reading before a frontier VLM fallback on disagreement | cheaper than routing every cell through the frontier tier |
+| Tier | Component | Job | Model(s) | Notes |
+|---|---|---|---|---|
+| Deterministic (local) | PyMuPDF · Docling · **MinerU2.5** | text layer, layout, table grids, stitching | n/a — local libraries | 1.2B specialist beats Gemini on TEDS |
+| Extract (primary) | LLM C1–C4 all-domain text | `anthropic/claude-sonnet-4.5` | Frontier default | verified live 2026-09-17 |
+| Extract (cross-family) | LLM C1–C4 ensemble member | `openai/gpt-5.1` | Different family from extract | cross-family ρ=0.54; new-family signal needed |
+| Verify (NLI) | LLM quote↔value checking | `google/gemini-3.1-pro-preview` | Third family; never extractor judging itself | frontier NLI accuracy unmeasured vs Llama/Qwen |
+| Vision (cell content) | VLM SoA cell text, first pass | `google/gemini-3.1-pro-preview` | Frontier VLM | no evidence 30B VLMs match frontier |
+| Vision (cross-check) | VLM cell cross-family signal | `anthropic/claude-sonnet-4.5` | Different family from vision | cross-family diversity needed |
+| Hard reasoning | LLM estimands, amendments, cross-section | `anthropic/claude-opus-4.8` | Escalation tier | hardest reasoning tier |
+| Section routing (residue) | LLM untyped-section fallback | `anthropic/claude-sonnet-4.5` | After deterministic detection | only residue after bookmarks/ToC/headings |
 
 **Rules.**
 - **Cross-family verification only** (ρ = 0.54 cross vs 0.77 within), and **verify only the

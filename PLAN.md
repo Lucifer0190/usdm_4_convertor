@@ -128,11 +128,16 @@ and the content of a table, and no single call ever owns more than ~40 schema fi
 
 ---
 
-## 4. Models: OpenRouter switch + SLM tiering — verified against the live catalog
+## 4. Models: Frontier LLMs + MinerU2.5 — accuracy-first strategy
 
 All LLM traffic runs through **OpenRouter** behind `llm/router.py`, with roles declared in
-config so any model is swappable per role without code changes. (OpenRouter and a
-Llama-3.1-8B SLM member are **already implemented** — see `llm/openrouter.py`.)
+`config/models.yaml` so any model is swappable per role without code changes. Role-based
+routing is already implemented in `llm/openrouter.py` and `llm/config.py`.
+
+**Strategy: frontier models by default; SLMs only when empirically proven to beat frontier
+on that task.** This is accuracy-over-cost. The published evidence shows frontier models
+outperform small models in nearly every domain (see analysis table below). One specialist
+survives this test: **MinerU2.5** beats Gemini-2.5-Pro on table structure extraction.
 
 > ⚠️ **Constraint, verified live (2026-09-17, 444 models on the catalog):** OpenRouter
 > accepts a `logprobs` parameter but **not every provider supports it**.
@@ -141,33 +146,33 @@ Llama-3.1-8B SLM member are **already implemented** — see `llm/openrouter.py`.
 > logprobs breaks *silently* on a model swap between those two. Logprobs are at most one
 > optional feature, never load-bearing.
 
-### 4.1 What "OpenRouter" can and can't be
+### 4.1 Role → Model mapping (verified live, 2026-09-17)
 
-An earlier draft of this table named `GLiNER-BioMed` and `MiniCheck-FT5` as models
-OpenRouter would serve. **That was wrong, and worth stating precisely rather than quietly
-fixing:** OpenRouter proxies providers' hosted **chat-completion** APIs. It does not host
-task-specific token-classification/NLI encoders (there is no chat endpoint to call), and it
-does not accept caller-uploaded fine-tuned checkpoints. Querying the live catalog
-(`GET /api/v1/models`, 444 entries) confirms neither model is present, which is expected —
-they were never going to be. Two genuinely different tiers follow from this, and both are
-legitimately called "SLM" in the literature:
-
-- **Small chat models, via OpenRouter** — swappable through the same router as the frontier
-  tier, billed per token, zero infra to run.
-- **Specialist encoders, self-hosted** — not chat models at all; run locally (CPU-viable for
-  both, given their size) with no OpenRouter involvement. This is a deliberate infrastructure
-  decision, not a gap in the OpenRouter plan.
-
-| Tier | Component | Job | Evidence |
+| Role | Model | Family | Why |
 |---|---|---|---|
-| Deterministic (local) | PyMuPDF · Docling · MinerU2.5 | text layer, layout, table grids, stitching | MinerU2.5 1.2B **beats Gemini-2.5-Pro** on TEDS |
-| **Self-hosted encoder** (not OpenRouter) | **GLiNER-BioMed** | drug / procedure / lab / visit / AE spotting | *Bioinformatics*: **59.8%** zero-shot, **70.4%** 10-shot F1, +39–568% throughput |
-| **Self-hosted encoder** (not OpenRouter) | **MiniCheck-FT5 (770M)** | NLI: does the quote support the value? | **74.7% balanced acc ≈ GPT-4's 75.3% at ~400× lower cost** |
-| SLM, via OpenRouter | small classifier role → `openai/gpt-oss-20b` (verified live: 131k ctx, $0.03/$0.13 per M tok — cheapest capable model on the catalog) | section routing, SoA-vs-narrative | structured generation *helps* classification; cheapest tier justifies routing every section through it |
-| SLM ensemble member, via OpenRouter | `meta-llama/llama-3.1-8b-instruct` (current default, already implemented) or `qwen/qwen3-8b` (newer arch, verified live, $0.117/$0.455 per M) | independent metadata/design member, different family from the frontier extractor | already lifted metadata auto-accept 1/6 → 5/6 on the reference fixture |
-| SLM, tuned (once labels exist) | QLoRA on a **self-hosted** copy of `meta-llama/llama-3.1-8b-instruct` or `qwen/qwen3-8b` | high-volume narrow fields | *Scientific Reports*: **90.0% exact match, non-inferior to a second human annotator**. OpenRouter does not accept caller-uploaded weights — fine-tuned checkpoints are served from our own inference (vLLM/TGI) or a dedicated-deployment provider, not the OpenRouter marketplace; the untuned base slug stays available through OpenRouter as the pre-tuning fallback |
-| Frontier, via OpenRouter | `anthropic/claude-sonnet-4.5` (primary) · `openai/gpt-5.1` (cross-family verifier — needed since cross-family ρ=0.54 vs within-family 0.77) · `google/gemini-3.1-pro-preview` (vision fallback) — all verified live on the catalog | SoA cell content, estimands, amendment diffs, cross-section reasoning | MMLongBench ceiling is 44.9% F1 — small models are far below |
-| Vision cell-content pass, via OpenRouter (cheaper than frontier) | `qwen/qwen3-vl-30b-a3b-instruct` (verified live, vision-capable MoE) | first-pass SoA cell reading, before falling back to a frontier VLM on disagreement | avoids paying frontier price for every cell in a stitched table |
+| **extract** (domain text, primary) | `anthropic/claude-sonnet-4.5` | Anthropic | C1–C4 extraction default tier |
+| **extract_alt** (cross-family verifier) | `openai/gpt-5.1` | OpenAI | ρ=0.54 cross-family signal needed; no evidence a small model provides it at frontier accuracy |
+| **verify** (quote↔value NLI, uncertain subset) | `google/gemini-3.1-pro-preview` | Google | Third family; frontier accuracy required for grounding |
+| **vision** (SoA cell content, first pass) | `google/gemini-3.1-pro-preview` | Google | Frontier VLM; no evidence Qwen-3-VL-30B or any 30B matches frontier |
+| **vision_alt** (cell cross-check) | `anthropic/claude-sonnet-4.5` | Anthropic | Different family from `vision` for cross-family signal |
+| **hard_reasoning** (estimands, amendments) | `anthropic/claude-opus-4.8` | Anthropic | Escalation tier for hardest reasoning |
+| **route** (section residue) | `anthropic/claude-sonnet-4.5` | Anthropic | After deterministic detection (bookmarks, headings, ToC) |
+
+### 4.2 Why SLMs are not in the design
+
+An earlier draft used small models (`Llama-3.1-8B`, `gpt-oss-20b`, `Qwen-3-8B`) as
+cost-saving measures. **Frontier models outperform them in every measured domain** and
+the cost savings are modest (10–30% per token) when the disk cache (Phase 0, task 0.3)
+makes re-runs free. Test applied to each SLM candidate:
+
+| Role candidate | SLM choice | Evidence vs frontier | Decision |
+|---|---|---|---|
+| Text extraction | Llama-3.1-8B | No task-matched frontier benchmark. Llama's strength is on quantized-weight tasks (legal/code), not clinical prose | **Frontier only** |
+| Cross-family ensemble member | Llama-3.1-8B / Qwen-3-8B | Cross-family ρ=0.54 signal needs diversity, not model size. Using a *stronger* second family achieves both | **Frontier, different family** |
+| NLI (quote↔value) | MiniCheck-FT5 (770M) | **74.7% balanced acc ≈ GPT-4 75.3%**. But GPT-4 was the 2023 frontier; GPT-5.1 is higher. Frontier NLI accuracy is unmeasured | **Frontier** |
+| Section routing | gpt-oss-20b | "Structured generation helps classification" — but no direct comparison to frontier on routing. Cost cut: ~30% per token | **Deterministic first** (bookmarks, ToC, headings); frontier for residue |
+| Entity spotting (drugs/labs/visits) | GLiNER-BioMed | 59.8% / 70.4% F1 is good for a 0.3B model. Frontier zero-shot biomedical NER unknown but likely higher | **Support signal only** (for completeness accounting) |
+| High-volume narrow fields | QLoRA 8B | *Scientific Reports*: **90.0% exact match, non-inferior to second-human**. But never compared to frontier LLM on same fields | **Not now.** Revisit after Phase 4 only if a domain's frontier accuracy < the tuning paper's 90% |
 
 **Do not build:** SmolDocling near tables (**0.52 TEDS** vs TableFormer 0.89); verbalized
 confidence as a gate (**0.692 AUC**); the extracting model as its own judge
