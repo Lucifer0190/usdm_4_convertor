@@ -43,6 +43,15 @@ Pass `--slm` to `convert` / `convert-full` to add a **small model as a second, d
 family** in the metadata ensemble (default `meta-llama/llama-3.1-8b-instruct`). Off by
 default for cost control.
 
+> **v0.3 note — not every "SLM" in this design goes through OpenRouter.** OpenRouter
+> proxies providers' chat-completion APIs; it has no catalog entry for a task-specific
+> NER/NLI encoder and no path for a caller-uploaded fine-tuned checkpoint. `GLiNER-BioMed`
+> and `MiniCheck-FT5` (planned, [`../PLAN.md`](../PLAN.md) §4) are **self-hosted**, not an
+> `OPENROUTER_MODEL_*` value — don't spend time looking for their slug on OpenRouter. Every
+> slug that *is* claimed to be on OpenRouter in this doc set has been checked against the
+> live catalog (`GET /api/v1/models`) rather than assumed; re-check before citing a new one,
+> since the catalog changes over time.
+
 > **Note:** OpenRouter hosts **no clinically fine-tuned model** (checked across 60
 > providers / 411 models — the only "medical" hits are `mistral-medium`, a general
 > model). We therefore use a small, cheap, medically-competent *general* model. Llama 3.1
