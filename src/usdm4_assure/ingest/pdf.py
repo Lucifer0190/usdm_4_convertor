@@ -1,6 +1,7 @@
 """Foundation A — PDF -> layout blocks + rendered page images (deterministic, cached).
 
-No LLM here. Uses PyMuPDF for text-with-coordinates and page rendering.
+No LLM here. Uses PyMuPDF for text-with-coordinates, page rendering, and
+(:mod:`usdm4_assure.ingest.geometry`) char-level geometry for L5 grounding.
 """
 from __future__ import annotations
 
@@ -8,7 +9,8 @@ from pathlib import Path
 
 import pymupdf  # PyMuPDF
 
-from usdm4_assure.contracts import Block, Document
+from usdm4_assure.contracts import Block, CharSpan, Document
+from usdm4_assure.ingest.geometry import page_geometry
 
 
 def _classify(text: str, size: float, page_median_size: float) -> str:
@@ -47,9 +49,12 @@ def ingest(pdf_path: str | Path, image_dir: str | Path | None = None,
     doc = pymupdf.open(pdf_path)
     blocks: list[Block] = []
     full_parts: list[str] = []
+    chars: dict[int, list[CharSpan]] = {}
 
     for pno in range(doc.page_count):
         page = doc[pno]
+        _, page_chars = page_geometry(page, pno + 1)
+        chars[pno + 1] = page_chars
         data = page.get_text("dict")
         sizes = [
             span["size"]
@@ -95,4 +100,5 @@ def ingest(pdf_path: str | Path, image_dir: str | Path | None = None,
         blocks=blocks,
         full_text="\n".join(full_parts),
         page_images=page_images,
+        chars=chars,
     )
