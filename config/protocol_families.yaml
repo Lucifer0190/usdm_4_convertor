@@ -4,8 +4,18 @@
 # (Rewant's_USDM_Extractor/app/services/study_fingerprint.py, ~line 520-590)
 # as config data. Detection order matters in the source (first match wins,
 # "standard_randomized_phase3" is the default) — this file preserves that
-# order via the list index; the classification rules themselves are not
-# ported here (that is Phase 3's section-graph/fingerprint work, CP3-B).
+# order via the list index.
+#
+# Detection signals (task 3.4) — the text-detectable subset of the source's
+# rules. ``where`` says which text is searched: ``title`` = page 1 (the title
+# page — the source matches the study title, not the synopsis), ``sections`` =
+# every section-graph title, ``phases`` = phase scopes parsed from the title
+# page ("Phase 1b/2" -> "phase_1b phase_2").
+# ``match`` is a list of case-insensitive regexes that must ALL be found. A
+# family with no ``match`` is never detected: the default (first entry) is the
+# fallback, and ``non_protocol_companion`` needs a document-type classifier the
+# pipeline does not have yet. Source signals that need graph features we do
+# not compute (scope counts, image-heavy schema) are not approximated.
 #
 # Note: DEVPLAN.md refers to "11 documented protocol families"; the source
 # defines 19 distinct study_archetype values. Extracted faithfully to source
@@ -22,82 +32,143 @@ families:
       Document classified as a non-protocol companion document type; it is
       not treated as a standalone full-protocol USDM source.
   - key: master_vaccine_protocol
+    where: title
+    match:
+      - '\bmaster protocol\b'
+      - '\bvaccin'
     multi_part_study: true
     rationale: >-
       Title/design describe a master vaccine protocol with substudy or
       group-specific extraction needs.
   - key: umbrella_substudy_protocol
+    where: title
+    match:
+      - '\bumbrella\b'
     multi_part_study: true
     rationale: >-
       Title/design describe an umbrella study or substudy-specific umbrella
       protocol.
   - key: vaccine_substudy_protocol
+    where: title
+    match:
+      - '\bvaccin'
+      - '\bsub-?study\b'
     multi_part_study: true
     rationale: >-
       Protocol context contains vaccine substudy/group-specific objective or
       schedule families.
   - key: seamless_phase2b3
+    where: title
+    match:
+      - '\bseamless\b'
+      - '\bphase (?:2b|ii b|2/3|2b/3|iib/iii)\b'
     multi_part_study: true
     rationale: >-
       Title/design describe a seamless or phase-transition Phase 2b/3 study.
   - key: master_protocol_substudies
+    where: sections
+    match:
+      - '\bsub-?stud(?:y|ies)\b'
     multi_part_study: true
     rationale: >-
       Document graph contains umbrella/substudy-scoped sections.
   - key: sli_plus_randomized_phase3
+    where: title
+    match:
+      - '\bsafety (?:lead|run)-in\b'
     multi_part_study: true
     rationale: >-
       Study title/design references a safety lead-in before randomized
       efficacy.
   - key: phase1b_phase2_split
+    where: phases
+    match:
+      - '\bphase_1b\b'
+      - '\bphase_2\b'
     multi_part_study: true
     rationale: >-
       Distinct phase 1b and phase 2 scoped sections are present.
   - key: blinded_extension_with_open_label_cohort
+    where: sections
+    match:
+      - '\bpart ia\b'
+      - '\bpart ib\b'
+      - '\bopen[- ]label cohort\b|\bpart ii\b'
     multi_part_study: true
     rationale: >-
       Study contains Part Ia/Part Ib extension logic plus a separate
       open-label cohort or Part II.
   - key: multi_part_randomized_oncology
+    where: sections
+    match:
+      - '\bpart (?:1|a)\b'
+      - '\bpart (?:2|b)\b'
     multi_part_study: true
     rationale: >-
       Title/design describe a Part 1 / Part 2 oncology design with
       dose-evaluation followed by randomized efficacy.
   - key: ddi_cohort_embedded
+    where: sections
+    match:
+      - '\bddi cohort\b|\bdrug[- ]drug interaction cohort\b'
     multi_part_study: true
     rationale: >-
       Study contains a DDI cohort scope.
   - key: randomized_withdrawal_extension
+    where: title
+    match:
+      - '\brandomi[sz]ed[- ]withdrawal\b'
+      - '\btitration\b'
     multi_part_study: true
     rationale: >-
       Study title/design describe randomized withdrawal and dose-titration
       extension behavior.
   - key: period_split_blinded_extension
+    where: sections
+    match:
+      - '\bperiod a\b'
+      - '\bperiod b\b'
     multi_part_study: true
     rationale: >-
       Study defines distinct Period A and Period B science or schedule
       families.
   - key: randomized_blinded_extension
+    where: title
+    match:
+      - '\b(?:blinded )?extension\b|\btitration\b'
     multi_part_study: false
     rationale: >-
       Title/design describe a blinded extension or titration period after
       the randomized core study.
   - key: physician_choice_comparator_oncology
+    where: title
+    match:
+      - '\b(?:physician|investigator)''?s''? choice\b'
     multi_part_study: false
     rationale: >-
       Study uses a physician-choice or mixed comparator regimen that should
       remain explicit in design and intervention routing.
   - key: maintenance_randomized_oncology
+    where: title
+    match:
+      - '\bmaintenance (?:therapy|treatment)\b|\bas maintenance\b'
     multi_part_study: false
     rationale: >-
       Title/design indicate a maintenance-style oncology study after prior
       therapy or transplant.
   - key: pediatric_inclusive_phase3
+    where: title
+    match:
+      - '\badolescents?\b'
+      - '\bphase (?:3|iii)\b'
     multi_part_study: false
     rationale: >-
       Study title/design explicitly include adolescent participants in a
       Phase 3 efficacy study.
   - key: clinical_pharmacology_table_driven
+    where: title
+    match:
+      - '\bpharmacokinetic'
     multi_part_study: false
     rationale: >-
       PK-first study title with compact science structure.
