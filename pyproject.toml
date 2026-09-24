@@ -21,6 +21,9 @@ dependencies = [
 # CORE engine ships transitively via usdm4 -> cdisc-rules-engine (USDM4().validate_core()).
 dev = ["pytest>=8", "ruff>=0.6", "reportlab>=4.0"]  # reportlab: spike PDF fixture generators
 docs = ["mkdocs-material>=9.5"]
+# Multi-page SoA table structure (Phase 2). Optional: layout/*_adapter.py return
+# [] when these are absent, so the deterministic PyMuPDF path always works standalone.
+layout = ["docling>=2.0", "mineru>=2.5"]
 
 [project.scripts]
 usdm4 = "usdm4_assure.cli:app"
