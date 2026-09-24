@@ -48,21 +48,26 @@ the target v0.3 layout from [`../DESIGN.md`](../DESIGN.md) §6 — planned modul
 *Under Phase 4 every call here will be sharded to <40 fields and use two-pass (free-text
 reasoning, then constrained JSON) emission — see DESIGN.md §3 L4.*
 
-## L5 — Grounding *(planned, v0.3 Phase 1 — highest priority)*
+## L5 — Grounding
 
 | Module | Role |
 |---|---|
-| `ground/quote_resolver.py` | Resolves a candidate's verbatim quote to page + character offset + bounding box using PyMuPDF character geometry. Exact-substring match, plus a whitespace/ligature-normalised second pass. |
-| `ground/verify.py` | Hard-gates any candidate whose quote cannot be located in the source. The model never emits coordinates — only this module does. |
+| `ingest/geometry.py` | Per-page character-level geometry: glyph ↔ bbox mapping via PyMuPDF `get_text("rawdict")`. Character offsets in `Document.text_of(page)` directly index `Document.chars[page]` for deterministic quote resolution. |
+| `ground/quote.py` | Resolves a candidate's verbatim quote to page + character offset + bounding box using character geometry. Pass 1: exact substring per page. Pass 2: normalized (whitespace collapse, ligatures, soft hyphens, smart quotes). Returns `Quote(text, verify_pass∈{exact,normalized,failed}, page, char_start, char_end, bbox)`. |
+| `audit/store.py` | Append-only Part 11 audit store (SQLite). Every field decision logs model ID, prompt hash, quote text, verify_pass, page, and bbox for reproducibility and audit compliance. |
 
 ## L6 — Assurance ★
 
 | Module | Role |
 |---|---|
-| `assure/__init__.py` | The moat. `assure()` groups candidates per field (ensemble), `verify()` grounds each value against its source span, and confidence + `Decision` are computed. Runs fully without an LLM today. |
-| `assure/confidence.py` *(planned)* | Multi-signal fitted confidence model (grounding outcome, entailment, cross-model agreement, field type, retrieval score) replacing the current hand-set formula. |
-| `assure/conformal.py` *(planned)* | Split-conformal threshold with small-sample correction — a provable, marginal bound on error among auto-accepted fields. |
-| `assure/completeness.py` *(planned)* | Expected-vs-found reconciliation per domain (visit/arm/activity counts) — the direct defence against silent omission. |
+| `assure/__init__.py` | The moat. `assure()` groups candidates per field (ensemble), resolves grounding via L5, verifies each value against its source span, and computes confidence + `Decision`. Runs fully without an LLM on deterministic ensemble members; LLM is invoked only for verification on the uncertain subset. Uniform across C1–C4 and SoA. |
+| `assure/verify.py` | Two-tier verifier: (1) deterministic token-overlap check (free); (2) escalation to a `verify`-role LLM (third family, different from extractor and alt-extractor) only when deterministic verdict is "partial". Hard gates: value with only failed quotes BLOCKs; value with ≥1 ok quote proceeds. |
+| `extract/shards.py` | Shard definitions for two-pass LLM extraction: <40 fields per shard, organized by domain (C1–C4). Each shard has versioned `pass1.md` (reasoning) and `pass2.md` (JSON) templates. |
+| `llm/two_pass.py` | Two-pass extraction orchestrator: pass 1 free-text reasoning, pass 2 strict JSON `[{field, value, quote}]` with mandatory verbatim quotes. `extract_shard()` returns `GroundedCandidate`s with resolved quotes. |
+| `audit/writer.py` | Pipeline integration for audit logging: `write_field_decision()` appends one `AuditRecord` per `AssuredField`, pulling model/prompt/quote provenance from the winning grounded candidate. |
+| `assure/confidence.py` *(planned, Phase 4)* | Multi-signal fitted confidence model (grounding outcome, entailment, cross-model agreement, field type, retrieval score) replacing the current hand-set formula. |
+| `assure/conformal.py` *(planned, Phase 4)* | Split-conformal threshold with small-sample correction — a provable, marginal bound on error among auto-accepted fields. |
+| `assure/completeness.py` *(planned, Phase 3)* | Expected-vs-found reconciliation per domain (visit/arm/activity counts) — the direct defence against silent omission. |
 
 ## L7 — Assembly
 
@@ -111,6 +116,6 @@ Phase-0/1 scope, and are not represented as empty packages in the tree.
 
 | Module | Role |
 |---|---|
-| `pipeline.py` | `run()` (metadata spine) and `run_full()` (full loop). |
-| `cli.py` | `usdm4 convert`, `convert-soa`, `convert-full`, `version`. |
-| `contracts.py` | Shared dataclasses spoken between layers. |
+| `pipeline.py` | `run()` (metadata spine) and `run_full()` (full loop). Both now route all domains through the uniform `assure()` path and write `review.json` with page + bbox + verify_pass on every row. |
+| `cli.py` | `usdm4 version` — print version. `usdm4 roles` — print active model roles from `config/models.yaml`. `usdm4 convert` (metadata spine), `convert-soa` (table-only), `convert-full` (all domains). All accept `--require-llm` to fail on missing API key and `--core` to run CDISC CORE gate. |
+| `contracts.py` | Shared dataclasses: `Document`, `FieldCandidate` (legacy), `GroundedCandidate` (quote-backed), `Quote`, `CharSpan`, `AssuredField`, `Finding`, `AuditRecord`, `Decision`. |

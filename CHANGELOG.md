@@ -6,6 +6,40 @@ yet semantically versioned.
 
 ## [Unreleased]
 
+### Phase 1 complete — Grounded spine (v0.3.1, CP1-C)
+
+**Major milestone:** All four domains (C1 metadata, C2 design, C3 eligibility, C4 objectives)
+now flow through a uniform Assurance path with **verbatim quote grounding**. Every emitted
+field carries a resolved quote (page + character offset + bounding box), and a value with
+only a failed quote is a hard BLOCK — no exceptions.
+
+Architecture layers now complete: L0 (ingest with character geometry), L4–L6 (two-pass sharded
+extraction with grounding and verification), L7–L8 (assembly and validation). Layers L1–L3
+(layout, multi-page SoA stitching, routing) and L9 (review UI) scheduled for Phases 2–5.
+
+The following changes reflect this:
+- **Character-level geometry** (`ingest/geometry.py`) — PyMuPDF `get_text("rawdict")` + synthetic
+  separators preserve a deterministic offset↔bbox mapping. Quote resolution is now code-emitted,
+  never model-emitted.
+- **Two-pass sharded LLM extraction** (`llm/two_pass.py`, `extract/shards.py`) — every field
+  the model proposes carries a verbatim quote; pass 1 free-text reasoning, pass 2 strict JSON.
+  Quote resolution (`ground/quote.py`) handles exact substring and normalized fallback
+  (whitespace collapse, ligatures fi/fl, soft hyphens, smart/ASCII quotes). Failed quote =
+  `Quote(verify_pass="failed")`, never a low-confidence guess.
+- **Append-only Part 11 audit store** (`audit/store.py`, `audit/writer.py`) — every field
+  decision logs model ID, prompt hash, quote, page, and bbox. SQLite triggers enforce immutability.
+- **Uniform Assurance** (`assure/__init__.py`, `assure/verify.py`) — one path for all domains.
+  Grounding is enforced before the verifier runs: a value backed only by failed quotes blocks
+  before any other logic. Verifier is two-tier: deterministic token-overlap (free), then
+  escalation to LLM `verify`-role (third family, only on uncertain subset). Runs fully without
+  an LLM on deterministic members.
+- **Pipeline rewire** (`pipeline.py`) — `run_full()` now routes C2, C3, C4 through `assure()`,
+  writes `review.json` aggregating all domains with page + bbox + verify_pass on every row.
+- **CLI** — new `usdm4 roles` command prints active model role mapping from `config/models.yaml`.
+  `convert` and `convert-full` accept `--require-llm` to fail on missing API key.
+- **Documentation** (`docs/pipeline.md`, `docs/modules.md`) — updated to reflect L5 grounding
+  and L6 verification as implemented, not planned.
+
 ### Architecture (v0.3.1) — Frontier-only model strategy, verified live
 
 **Major change:** v0.3 proposed SLM-tiered extraction (cheap small models like Llama-3.1-8B

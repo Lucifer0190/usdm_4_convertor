@@ -1,11 +1,11 @@
 # Pipeline & data-flow contracts
 
-> **v0.3 note.** This page describes the target ten-layer pipeline (see
-> [Architecture](architecture.md)). The implementation is migrating toward it in the
-> phases described in [`../PLAN.md`](../PLAN.md); today's entry points and contracts
-> (below, current as of the working code) are the L0/L4/L6/L7/L8 slice of that target —
-> substrate ingest, sharded-ish domain extraction, ensemble assurance, assembly, and the
-> three validation gates. L1–L3, L5 and L9 are being built in Phases 1–3.
+> **v0.3 note.** This page describes the ten-layer pipeline (see
+> [Architecture](architecture.md)). The implementation is being built in the phases
+> described in [`../PLAN.md`](../PLAN.md). As of Phase 1 (CP1-C, 2026-09-24), the
+> implemented layers are L0 (ingest), L4 (sharded extraction), L5 (grounding), L6
+> (assurance), L7 (assembly), and L8 (validation). L1–L3 and L9 are scheduled for
+> Phases 2–5.
 
 Two entry points, both in `usdm4_assure.pipeline`:
 
@@ -35,10 +35,10 @@ validate.gate.validate_wrapper(...)              → {structural, d4k, core}
 data/out_full/study.usdm.json
 ```
 
-**Known gap flagged by the v0.3 evidence review:** today, `assure()` is only actually
-invoked for the C1 metadata and SoA domains — C2/C3/C4 use ad-hoc, hand-set confidence
-instead of the shared ensemble/verifier path. Phase 1 makes assurance uniform across every
-domain, per [`../DESIGN.md`](../DESIGN.md) §3 L6.
+**Phase 1 complete:** as of CP1-C, `assure()` is uniform across C1–C4 (all domains) and SoA,
+applying the shared ensemble/grounding/verifier path per [`../DESIGN.md`](../DESIGN.md)
+§3 L5–L6. Every field carries a resolved quote (page + character offset + bbox), and a value
+with only a failed quote is a hard BLOCK.
 
 ## Target data flow (v0.3, in progress)
 

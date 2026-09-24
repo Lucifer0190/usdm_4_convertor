@@ -17,13 +17,45 @@ def version() -> None:
 
 
 @app.command()
+def roles() -> None:
+    """Print active model roles configuration."""
+    from pathlib import Path
+
+    import yaml
+
+    config_path = Path(__file__).parent.parent.parent / "config" / "models.yaml"
+    with config_path.open() as f:
+        config = yaml.safe_load(f)
+
+    console.rule("[bold]Model roles[/]")
+    if "roles" in config:
+        t = Table(title="OpenRouter role → model mapping", show_lines=False)
+        t.add_column("role", style="cyan")
+        t.add_column("model")
+        for role, model in config["roles"].items():
+            t.add_row(role, model)
+        console.print(t)
+
+    if "constraints" in config:
+        console.print("\n[bold]Constraints[/]")
+        for name, value in config["constraints"].items():
+            console.print(f"  {name}: {value}")
+
+
+@app.command()
 def convert(pdf: str, out: str = "data/out", core: bool = False,
-            slm: bool = False) -> None:
+            slm: bool = False, require_llm: bool = False) -> None:
     """Convert a protocol PDF to USDM 4.0 JSON via the Assurance spine.
 
     Pass --slm to add a cheap different-family SLM member to the ensemble.
+    Pass --require-llm to fail if no LLM key is configured.
     """
+    import os
+
     from usdm4_assure.pipeline import run
+
+    if require_llm:
+        os.environ["USDM4_REQUIRE_LLM"] = "1"
 
     console.rule("[bold]USDM4-Assure — convert")
     res = run(pdf, out_dir=out, run_core=core, use_slm=slm)
@@ -51,12 +83,18 @@ def convert(pdf: str, out: str = "data/out", core: bool = False,
 
 @app.command("convert-full")
 def convert_full(pdf: str, out: str = "data/out_full", core: bool = False,
-                 slm: bool = False) -> None:
+                 slm: bool = False, require_llm: bool = False) -> None:
     """Full loop: PDF -> metadata + design + SoA -> one conformant USDM 4.0 study.
 
     Pass --slm to add a cheap different-family SLM member to the metadata ensemble.
+    Pass --require-llm to fail if no LLM key is configured.
     """
+    import os
+
     from usdm4_assure.pipeline import run_full
+
+    if require_llm:
+        os.environ["USDM4_REQUIRE_LLM"] = "1"
 
     console.rule("[bold]USDM4-Assure — full study")
     r = run_full(pdf, out_dir=out, run_core=core, use_slm=slm)
