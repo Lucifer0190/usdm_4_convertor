@@ -1,0 +1,56 @@
+{
+  "nct": "NCT04730349",
+  "sponsor": "BMS",
+  "condition": "Oncology",
+  "source_pdf": "spikes/_work/usdm_data/source_data/protocols/BMS_NCT04730349_Oncology/BMS_NCT04730349_Oncology.pdf",
+  "pages": [40, 41, 42, 43],
+  "n_header_rows": 1,
+  "n_cols": 4,
+  "header_repeats_on_continuation": true,
+  "column_headers": [
+    "Safety Follow-up Visit 1",
+    "Safety Follow-up Visit 2",
+    "Safety Follow-up Visit 3",
+    "Survival Follow-up Every 3 Months"
+  ],
+  "activities": [
+    "Vital Signs",
+    "Performance Status",
+    "12-lead ECG",
+    "Adverse Events and Serious Adverse Events",
+    "Laboratory Tests (includes blood draws)",
+    "Pregnancy Test",
+    "Body Imaging",
+    "Brain Imaging",
+    "CSF - solid tumors and leukemia",
+    "Bone marrow aspirate - solid tumors",
+    "Survival Status",
+    "PK Samples"
+  ],
+  "marks": {
+    "Vital Signs": [0, 1, 2],
+    "Performance Status": [0, 2],
+    "12-lead ECG": [0],
+    "Adverse Events and Serious Adverse Events": [0, 1, 2, 3],
+    "Laboratory Tests (includes blood draws)": [0, 1, 2],
+    "Pregnancy Test": [0, 1, 2],
+    "Body Imaging": [0],
+    "Brain Imaging": [0],
+    "CSF - solid tumors and leukemia": [0],
+    "Bone marrow aspirate - solid tumors": [0],
+    "Survival Status": [0, 1, 2, 3],
+    "PK Samples": [0]
+  },
+  "page_of_activity": {
+    "Vital Signs": 40, "Performance Status": 40, "12-lead ECG": 40,
+    "Adverse Events and Serious Adverse Events": 40,
+    "Laboratory Tests (includes blood draws)": 41, "Pregnancy Test": 41,
+    "Body Imaging": 42, "Brain Imaging": 42,
+    "CSF - solid tumors and leukemia": 43, "Bone marrow aspirate - solid tumors": 43,
+    "Survival Status": 43, "PK Samples": 43
+  },
+  "excluded_rows": ["Safety Assessments", "Laboratory Tests", "Efficacy Assessments",
+                    "Pharmacokinetics (PK)/Immunogenicity"],
+  "labeler": "hand-reviewed against PyMuPDF find_tables() extraction, 2026-09-24",
+  "notes": "A 4-page post-treatment Safety/Survival Follow-up schedule (distinct from the main on-treatment SoA table earlier in the same protocol, at pages 23-38 -- flagged as a separate, later-occurring table, which is itself a realistic multi-table-per-protocol case). Marks include free-text conditional entries ('If toxicities are present', 'As clinically indicated') alongside plain 'X' -- treated as present per the same non-empty-cell convention used in NCT03421379. Four section-divider rows are excluded from `activities`."
+}
