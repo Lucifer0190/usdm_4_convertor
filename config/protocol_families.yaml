@@ -1,0 +1,103 @@
+# Protocol family (study_archetype) taxonomy (task 3.2, DEVPLAN.md §3-A).
+#
+# Extracted from the reference extractor's rule-first fingerprinting logic
+# (Rewant's_USDM_Extractor/app/services/study_fingerprint.py, ~line 520-590)
+# as config data. Detection order matters in the source (first match wins,
+# "standard_randomized_phase3" is the default) — this file preserves that
+# order via the list index; the classification rules themselves are not
+# ported here (that is Phase 3's section-graph/fingerprint work, CP3-B).
+#
+# Note: DEVPLAN.md refers to "11 documented protocol families"; the source
+# defines 19 distinct study_archetype values. Extracted faithfully to source
+# rather than trimmed to match the plan's approximate count.
+
+families:
+  - key: standard_randomized_phase3
+    multi_part_study: false
+    rationale: >-
+      Defaulted to standard randomized phase 3 based on GSOP-style structure.
+  - key: non_protocol_companion
+    multi_part_study: false
+    rationale: >-
+      Document classified as a non-protocol companion document type; it is
+      not treated as a standalone full-protocol USDM source.
+  - key: master_vaccine_protocol
+    multi_part_study: true
+    rationale: >-
+      Title/design describe a master vaccine protocol with substudy or
+      group-specific extraction needs.
+  - key: umbrella_substudy_protocol
+    multi_part_study: true
+    rationale: >-
+      Title/design describe an umbrella study or substudy-specific umbrella
+      protocol.
+  - key: vaccine_substudy_protocol
+    multi_part_study: true
+    rationale: >-
+      Protocol context contains vaccine substudy/group-specific objective or
+      schedule families.
+  - key: seamless_phase2b3
+    multi_part_study: true
+    rationale: >-
+      Title/design describe a seamless or phase-transition Phase 2b/3 study.
+  - key: master_protocol_substudies
+    multi_part_study: true
+    rationale: >-
+      Document graph contains umbrella/substudy-scoped sections.
+  - key: sli_plus_randomized_phase3
+    multi_part_study: true
+    rationale: >-
+      Study title/design references a safety lead-in before randomized
+      efficacy.
+  - key: phase1b_phase2_split
+    multi_part_study: true
+    rationale: >-
+      Distinct phase 1b and phase 2 scoped sections are present.
+  - key: blinded_extension_with_open_label_cohort
+    multi_part_study: true
+    rationale: >-
+      Study contains Part Ia/Part Ib extension logic plus a separate
+      open-label cohort or Part II.
+  - key: multi_part_randomized_oncology
+    multi_part_study: true
+    rationale: >-
+      Title/design describe a Part 1 / Part 2 oncology design with
+      dose-evaluation followed by randomized efficacy.
+  - key: ddi_cohort_embedded
+    multi_part_study: true
+    rationale: >-
+      Study contains a DDI cohort scope.
+  - key: randomized_withdrawal_extension
+    multi_part_study: true
+    rationale: >-
+      Study title/design describe randomized withdrawal and dose-titration
+      extension behavior.
+  - key: period_split_blinded_extension
+    multi_part_study: true
+    rationale: >-
+      Study defines distinct Period A and Period B science or schedule
+      families.
+  - key: randomized_blinded_extension
+    multi_part_study: false
+    rationale: >-
+      Title/design describe a blinded extension or titration period after
+      the randomized core study.
+  - key: physician_choice_comparator_oncology
+    multi_part_study: false
+    rationale: >-
+      Study uses a physician-choice or mixed comparator regimen that should
+      remain explicit in design and intervention routing.
+  - key: maintenance_randomized_oncology
+    multi_part_study: false
+    rationale: >-
+      Title/design indicate a maintenance-style oncology study after prior
+      therapy or transplant.
+  - key: pediatric_inclusive_phase3
+    multi_part_study: false
+    rationale: >-
+      Study title/design explicitly include adolescent participants in a
+      Phase 3 efficacy study.
+  - key: clinical_pharmacology_table_driven
+    multi_part_study: false
+    rationale: >-
+      PK-first study title with compact science structure.

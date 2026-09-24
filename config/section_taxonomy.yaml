@@ -1,0 +1,83 @@
+# Section classification taxonomy (task 3.2, DEVPLAN.md §3-A).
+#
+# Extracted from the reference extractor's classification logic
+# (Rewant's_USDM_Extractor/app/services/protocol_section_graph.py) as config
+# data rather than code — the vocabulary a section graph classifier assigns
+# to, independent of the (not-yet-ported) classification rules themselves.
+#
+# Four axes, each assigned independently to a section/chunk:
+#   canonical_section_type — coarse top-level section kind
+#   section_subtype        — finer content classification within a type
+#   authority_surface       — which rendering of the content is authoritative
+#                            (e.g. "soa_table_current" vs "soa_table_historic")
+#   table_role               — what kind of table this is, if it is one
+
+canonical_section_type:
+  - header
+  - summary
+  - introduction
+  - science
+  - design
+  - population
+  - interventions
+  - disposition
+  - assessments
+  - statistics
+  - appendix
+  - references
+
+section_subtype:
+  - abbreviations
+  - amendment_history
+  - analysis_sets
+  - committee_governance
+  - country_specific
+  - endpoint_analysis
+  - estimands_table
+  - general_statistics
+  - interim_analysis
+  - lab_inventory
+  - objectives_table
+  - pk_assessment
+  - reflex_labs
+  - response_criteria
+  - sample_size
+  - soa_followup
+  - soa_main
+  - substudy_design
+  - table_of_contents
+  - tumor_assessment
+  - umbrella_design
+
+authority_surface:
+  - abbreviation_section
+  - adjudication_committee
+  - amendment_table
+  - amendment_summary
+  - analysis_sets_table
+  - assessment_prose
+  - content_section
+  - endpoint_analysis_section
+  - endpoint_column
+  - estimand_column
+  - interim_analysis_section
+  - lab_appendix_table
+  - objective_column
+  - page_furniture
+  - reflex_lab_appendix
+  - response_criteria_appendix
+  - sample_size_section
+  - schema_figure
+  - schema_table
+  - soa_table_current
+  - soa_table_historic
+  - statistics_section
+  - title_identity
+
+table_role:
+  - amendment_history
+  - analysis_sets
+  - lab_inventory
+  - objective_endpoint_estimand
+  - schema
+  - soa
