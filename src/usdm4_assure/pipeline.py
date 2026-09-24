@@ -19,14 +19,16 @@ from pathlib import Path
 
 from usdm4_assure.assemble.metadata import assemble_metadata
 from usdm4_assure.assure import assure
-from usdm4_assure.contracts import AssuredField, Decision, FieldCandidate
+from usdm4_assure.contracts import AssuredField, Decision, FieldCandidate, Finding
 from usdm4_assure.extract import metadata as c1
 from usdm4_assure.extract.design import DESIGN_FIELDS
 from usdm4_assure.extract.eligibility import EligibilityExtract
 from usdm4_assure.extract.objectives import ObjectivesExtract
 from usdm4_assure.extract.shards import ELIGIBILITY_FIELDS, OBJECTIVES_FIELDS
+from usdm4_assure.extract.windows import window_for
 from usdm4_assure.ingest.pdf import ingest
 from usdm4_assure.llm.router import get_llm
+from usdm4_assure.sections.plan import build_plan
 from usdm4_assure.validate.gate import validate_wrapper
 
 
@@ -80,6 +82,8 @@ class FullResult:
             after the Assurance layer.
         assured_eligibility: C3's fields after the Assurance layer.
         assured_objectives: C4's fields after the Assurance layer.
+        routed: The section graph + route plan (``None`` with routing off).
+        findings: Scope findings from every domain's evidence window.
     """
     assured_meta: list[AssuredField]
     design: object
@@ -91,10 +95,13 @@ class FullResult:
     assured_design: list[AssuredField] = field(default_factory=list)
     assured_eligibility: list[AssuredField] = field(default_factory=list)
     assured_objectives: list[AssuredField] = field(default_factory=list)
+    routed: object = None
+    findings: list[Finding] = field(default_factory=list)
 
 
 def run_full(pdf_path: str | Path, out_dir: str | Path = "data/out_full",
-             run_core: bool = False, use_slm: bool = False) -> FullResult:
+             run_core: bool = False, use_slm: bool = False,
+             routing: bool = True) -> FullResult:
     """Run the full loop: PDF -> C1 metadata + C2 design + C3/C4 + SoA -> one study.
 
     Ingests the PDF once, runs every domain extractor over it, reconciles the SoA
@@ -107,6 +114,9 @@ def run_full(pdf_path: str | Path, out_dir: str | Path = "data/out_full",
         out_dir: Directory for artifacts (rendered pages + assembled study JSON).
         run_core: If ``True``, also run the official CDISC CORE gate (requires
             ``CDISC_LIBRARY_API_KEY``); otherwise only the offline d4k gate runs.
+        routing: Build the section graph + route plan and give each domain a
+            scoped evidence window (task 3.5). ``False`` feeds every extractor
+            the whole document — the routing-off arm of the Phase 3 eval.
 
     Returns:
         A ``FullResult`` bundling every domain's extract, the assembled study,
@@ -128,16 +138,25 @@ def run_full(pdf_path: str | Path, out_dir: str | Path = "data/out_full",
 
     doc = ingest(pdf_path, image_dir=out_dir / "pages")
     members = _members(use_slm)
+    routed = build_plan(doc, pdf_path) if routing else None
+    win = {d: window_for(doc, routed, d)
+           for d in ("metadata", "design", "eligibility", "objectives")}
+    findings = [f for w in win.values() for f in w.findings]
 
-    assured_meta = assure(c1.extract_all(doc, members), doc, c1.FIELDS, domain="metadata")
+    meta_doc = win["metadata"].document
+    assured_meta = assure(c1.extract_all(meta_doc, members), meta_doc, c1.FIELDS,
+                          domain="metadata")
     meta = {a.field: a.value for a in assured_meta if a.value}
-    design_cands, design = extract_design(doc, meta, members[0])
-    assured_design = assure(design_cands, doc, DESIGN_FIELDS, domain="design")
-    elig = extract_eligibility(doc)
-    assured_eligibility = assure(_eligibility_candidates(elig), doc, ELIGIBILITY_FIELDS,
+    design_doc = win["design"].document
+    design_cands, design = extract_design(design_doc, meta, members[0])
+    assured_design = assure(design_cands, design_doc, DESIGN_FIELDS, domain="design")
+    elig_doc = win["eligibility"].document
+    elig = extract_eligibility(elig_doc)
+    assured_eligibility = assure(_eligibility_candidates(elig), elig_doc, ELIGIBILITY_FIELDS,
                                  domain="eligibility")
-    objs = extract_objectives(doc)
-    assured_objectives = assure(_objectives_candidates(objs), doc, OBJECTIVES_FIELDS,
+    obj_doc = win["objectives"].document
+    objs = extract_objectives(obj_doc)
+    assured_objectives = assure(_objectives_candidates(objs), obj_doc, OBJECTIVES_FIELDS,
                                 domain="objectives")
     # The stitcher (task 2.3) is multi-page-aware; a table it can't confidently
     # reduce to the 3-header-row shape falls back to the single-page path.
@@ -154,6 +173,13 @@ def run_full(pdf_path: str | Path, out_dir: str | Path = "data/out_full",
         "source": str(pdf_path),
         "decision_summary": {d.value: 0 for d in Decision},
         "fields": [a.as_review_row() for a in all_assured],
+        "findings": [f.as_row() for f in findings],
+        "routing": ({"route_plan_hash": routed.plan_hash,
+                     "graph_source": routed.graph.source,
+                     "sections": len(routed.graph.sections),
+                     "study_archetype": routed.plan.fingerprint.study_archetype,
+                     "windows": {d: w.retrieval_config() for d, w in win.items()}}
+                    if routed else None),
         "validation": study.get("validation"),
     }
     for a in all_assured:
@@ -161,7 +187,8 @@ def run_full(pdf_path: str | Path, out_dir: str | Path = "data/out_full",
     (out_dir / "review.json").write_text(json.dumps(review, indent=2), encoding="utf-8")
 
     return FullResult(assured_meta, design, grid, study, out_dir, elig, objs,
-                      assured_design, assured_eligibility, assured_objectives)
+                      assured_design, assured_eligibility, assured_objectives,
+                      routed=routed, findings=findings)
 
 
 @dataclass

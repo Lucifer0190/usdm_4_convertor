@@ -156,6 +156,17 @@ def test_body_font_chapter_with_subsection_is_kept():
     assert [s.number for s in from_headings(doc)] == ["2", "2.1"]
 
 
+def test_unnumbered_typed_heading_opens_a_section_but_running_header_does_not():
+    running = [(p, 30, "PROTOCOL AMENDMENT 3", "prose") for p in (1, 2, 3, 4)]
+    doc = _doc(*running,
+               (2, 80, "PROTOCOL AMENDMENT SUMMARY OF CHANGES", "heading"),
+               (2, 120, "Section 4.1 updated.", "prose"),
+               (3, 80, "Some Unrecognised Heading", "heading"),
+               (4, 80, "1 INTRODUCTION", "heading"))
+    titles = [s.title for s in build_graph(doc).sections]
+    assert titles == ["PROTOCOL AMENDMENT SUMMARY OF CHANGES", "1 INTRODUCTION"]
+
+
 # --- bookmark-sourced graph ----------------------------------------------------- #
 def _bookmarked_pdf(path: Path) -> Path:
     pdf = pymupdf.open()
@@ -272,7 +283,8 @@ REAL = {
     # file: (expected graph source, SoA heading expected to be found)
     "Alexion_NCT04573309_Wilsons/Alexion_NCT04573309_Wilsons.pdf": ("bookmark", True),
     "AZ_NCT03402841_Oncology/AZ_NCT03402841_Oncology.pdf": ("heading", True),
-    "CDISC_Pilot/CDISC_Pilot_Study.pdf": ("heading", False),
+    # unnumbered "Protocol Attachment LZZT.1 Schedule of Events" heading
+    "CDISC_Pilot/CDISC_Pilot_Study.pdf": ("heading", True),
 }
 
 

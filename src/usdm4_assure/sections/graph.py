@@ -40,7 +40,8 @@ _TOC_PAGE_MIN = 6        # numbered candidates on one page ⇒ a ToC page
 _MAX_TOP_NUMBER = 30     # "120.5 mg" style table text is not a heading
 _TOP_MARGIN = 120.0      # points; a heading below this is mid-page
 _MAX_TITLE_WORDS = 14
-_LOOKAHEAD = 3         # candidates scanned for a chapter's first subsection
+_RUNNING_HEADER_PAGES = 3  # text on this many pages is page furniture
+_LOOKAHEAD = 3        # candidates scanned for a chapter's first subsection
 
 
 @dataclass(frozen=True)
@@ -173,8 +174,19 @@ def from_headings(doc: Document) -> list[Section]:
     a table of contents reset the sequence. A body-font single-number
     candidate ("4 Documented BRCA status") is a list item unless a real
     chapter follows it: an "N.x" subsection within the next few candidates.
+
+    Unnumbered headings ("PROTOCOL AMENDMENT SUMMARY OF CHANGES", "SYNOPSIS")
+    are kept only when heading-font or upper-case, recognised by a taxonomy
+    rule, and not repeated on several pages — a running header such as
+    "Protocol Amendment 3" must not open a section on every page. They nest
+    one level under the current numbered section (level 1 in front matter).
     """
+    pages_of: dict[str, set[int]] = {}
+    for b in doc.blocks:
+        pages_of.setdefault(_norm(b.text), set()).add(b.page)
+
     cands: list[tuple[Block, str, str, int]] = []
+    level_now = 0
     for b in doc.blocks:
         text = _norm(b.text)
         if len(text) > 120 or _TOC_TAIL.search(text):
@@ -183,11 +195,18 @@ def from_headings(doc: Document) -> list[Section]:
         if m:
             number, title = m.group(1), m.group(2).strip()
             if int(number.split(".")[0]) <= _MAX_TOP_NUMBER and _title_shaped(title):
-                cands.append((b, number, title, number.count(".") + 1))
+                level_now = number.count(".") + 1
+                cands.append((b, number, title, level_now))
             continue
         m = _APPENDIX.match(text)
         if m and (b.kind == "heading" or text.isupper() or len(text) < 80):
+            level_now = 1
             cands.append((b, "", text, 1))
+            continue
+        if ((b.kind == "heading" or (text.isupper() and len(text.split()) <= 10))
+                and _title_shaped(text) and len(pages_of[text]) < _RUNNING_HEADER_PAGES
+                and classify_title(text).typed):
+            cands.append((b, "", text, level_now + 1))
     per_page = Counter(c[0].page for c in cands)
     toc_pages = {p for p, n in per_page.items() if n >= _TOC_PAGE_MIN}
 

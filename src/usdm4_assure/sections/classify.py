@@ -92,7 +92,7 @@ _RULES: list[_Rule] = [
     _rule(r"committees?|governance|data monitoring|adjudication",
           "appendix", "committee_governance", "adjudication_committee"),
     # ICH M11 §10 "Supporting Documentation and Operational Considerations".
-    _rule(r"ethic|regulatory|data (?:management|handling|protection)|quality (?:control|assurance)|"
+    _rule(r"ethics\b|ethical (?:conduct|considerations|and regulatory)|regulatory|data (?:management|handling|protection)|quality (?:control|assurance)|"
           r"informed consent|publication|record keeping|monitoring of the study|audits?\b",
           "appendix"),
     _rule(r"(?:inclusion|exclusion|eligibility) criteria|study population|"

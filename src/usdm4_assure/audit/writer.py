@@ -27,7 +27,8 @@ def _winning_candidate(assured: AssuredField) -> GroundedCandidate | None:
 
 def write_field_decision(store: AuditStore, *, run_id: str, source_sha256: str,
                           domain: str, assured: AssuredField,
-                          pipeline_version: str | None = None) -> AuditRecord:
+                          pipeline_version: str | None = None,
+                          retrieval_config: dict | None = None) -> AuditRecord:
     """Append one :class:`AuditRecord` for a single :class:`AssuredField`.
 
     Args:
@@ -37,6 +38,9 @@ def write_field_decision(store: AuditStore, *, run_id: str, source_sha256: str,
         domain: Extraction domain (``"metadata"``, ``"design"``, ...).
         assured: The field as decided by the Assurance layer.
         pipeline_version: Optional version/commit tag of the running pipeline.
+        retrieval_config: How the field's evidence was selected — for a
+            routed run, the domain's ``EvidenceWindow.retrieval_config()``
+            (route name + route-plan hash + what was filtered out).
 
     Returns:
         The :class:`AuditRecord` that was appended.
@@ -50,6 +54,7 @@ def write_field_decision(store: AuditStore, *, run_id: str, source_sha256: str,
         decision=assured.decision, confidence=assured.confidence,
         model_id=(winner.model_id if winner else None),
         prompt_hash=(winner.prompt_hash if winner else None),
+        retrieval_config=retrieval_config,
     ).with_quote(quote)
     store.append(record)
     return record
@@ -57,10 +62,12 @@ def write_field_decision(store: AuditStore, *, run_id: str, source_sha256: str,
 
 def write_run(store: AuditStore, *, run_id: str, source_sha256: str, domain: str,
               assured_fields: list[AssuredField],
-              pipeline_version: str | None = None) -> list[AuditRecord]:
+              pipeline_version: str | None = None,
+              retrieval_config: dict | None = None) -> list[AuditRecord]:
     """Append one record per field in ``assured_fields``; returns them in order."""
     return [
         write_field_decision(store, run_id=run_id, source_sha256=source_sha256,
-                             domain=domain, assured=a, pipeline_version=pipeline_version)
+                             domain=domain, assured=a, pipeline_version=pipeline_version,
+                             retrieval_config=retrieval_config)
         for a in assured_fields
     ]

@@ -75,3 +75,11 @@ def test_study_populated_with_design_domains(result):
     pop = sd.get("population", {})
     # planned age range present (clears DDF00097)
     assert pop.get("plannedAge") is not None or pop.get("plannedSex")
+
+
+def test_review_records_route_plan(result):
+    import json
+    review = json.loads((result.out_dir / "review.json").read_text(encoding="utf-8"))
+    assert review["routing"]["route_plan_hash"] == result.routed.plan_hash
+    assert set(review["routing"]["windows"]) == {"metadata", "design", "eligibility", "objectives"}
+    assert isinstance(review["findings"], list)
