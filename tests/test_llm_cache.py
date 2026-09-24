@@ -84,6 +84,37 @@ def test_non_retryable_error_raises_immediately(tmp_path):
     assert mock_post.call_count == 1  # no retry on a non-retryable status
 
 
+def test_complete_vision_sends_image_content_and_caches(tmp_path):
+    cache = LLMCache(tmp_path / "llm.sqlite")
+    llm = OpenRouterLLM(model="test/vision-model", cache=cache)
+    llm.api_key = "fake-key"
+    llm.available = True
+
+    fake_response = Mock(status_code=200)
+    fake_response.json.return_value = {"choices": [{"message": {"content": "X"}}]}
+    with patch("usdm4_assure.llm.openrouter.requests.post",
+               return_value=fake_response) as mock_post:
+        first = llm.complete_vision("Zm9v", "what mark is this?")
+        second = llm.complete_vision("Zm9v", "what mark is this?")
+
+    assert first == "X" and second == "X"
+    assert mock_post.call_count == 1  # second call served from cache
+    sent = mock_post.call_args.kwargs["json"]["messages"][0]["content"]
+    assert sent[0] == {"type": "text", "text": "what mark is this?"}
+    assert sent[1]["image_url"]["url"] == "data:image/png;base64,Zm9v"
+
+
+def test_complete_vision_role_falls_back_to_vision_role_default():
+    llm = OpenRouterLLM(role="vision", cache=False)
+    llm.api_key = "fake-key"
+    llm.available = True
+    with patch("usdm4_assure.llm.openrouter.requests.post") as mock_post:
+        mock_post.return_value = Mock(status_code=200,
+                                      json=lambda: {"choices": [{"message": {"content": "X"}}]})
+        llm.complete_vision("Zm9v", "read this cell")
+    assert mock_post.call_args.kwargs["json"]["model"] == "google/gemini-3.1-pro-preview"
+
+
 def test_exhausts_retries_and_raises(tmp_path):
     cache = LLMCache(tmp_path / "llm.sqlite")
     llm = OpenRouterLLM(model="test/model", cache=cache, timeout=1.0)

@@ -113,6 +113,48 @@ class OpenRouterLLM(LLM):
             self._cache.put(key, model=model, prompt_hash=key, response=text)
         return text
 
+    def complete_vision(self, image_b64: str, prompt: str, *, system: str | None = None,
+                        max_tokens: int = 512, mime: str = "image/png") -> str:
+        """Call a vision-capable model with one image and a text prompt.
+
+        Not part of the ``LLM`` protocol (duck-typed): callers check
+        ``getattr(llm, "complete_vision", None)`` rather than requiring every
+        member to support it, since most extraction is text-only. Selects a
+        model the same way :meth:`complete` does, defaulting to the
+        ``"vision"`` role when neither ``model`` nor ``role`` is set.
+
+        Args:
+            image_b64: The image, base64-encoded (no data-URI prefix).
+            prompt: The text prompt accompanying the image.
+            system: Optional system prompt.
+            max_tokens: Response token cap.
+            mime: Image MIME type.
+
+        Returns:
+            The assistant message text (empty string if the response is empty).
+        """
+        if not self.available:
+            raise RuntimeError("OpenRouterLLM called without an OpenRouter key")
+        model = self.model or model_for(self.role or "vision")
+        content = [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{image_b64}"}},
+        ]
+        messages = ([{"role": "system", "content": system}] if system else [])
+        messages.append({"role": "user", "content": content})
+
+        key = cache_key(model, messages, max_tokens)
+        if self._cache is not None:
+            cached = self._cache.get(key)
+            if cached is not None:
+                return cached
+
+        text = self._call_with_retry(model, messages, max_tokens)
+
+        if self._cache is not None:
+            self._cache.put(key, model=model, prompt_hash=key, response=text)
+        return text
+
     def _call_with_retry(self, model: str, messages: list[dict], max_tokens: int) -> str:
         last_error: Exception | None = None
         for attempt in range(_MAX_ATTEMPTS):

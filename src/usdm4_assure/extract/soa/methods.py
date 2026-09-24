@@ -1,8 +1,9 @@
 """Independent SoA table extractors — the ensemble members for the SoA grid.
 
-  pdfplumber : ruling-line based table detection
-  pymupdf    : PyMuPDF's own find_tables() — a different implementation
-  vision     : multimodal LLM over the rendered page image (drop-in with a key)
+  pdfplumber        : ruling-line based table detection, single-page-only
+  pymupdf           : PyMuPDF's own find_tables(), single-page-only
+  pymupdf_stitched  : the same, but joined across pages first (task 2.3)
+  vision            : frontier VLM cell-content pass (task 2.5)
 
 Two independent deterministic implementations give a real agreement signal for
 the cross-validation step without needing an LLM.
@@ -11,9 +12,13 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from usdm4_assure.extract.soa.grid import SoAGrid
 from usdm4_assure.llm.base import LLM
+
+if TYPE_CHECKING:
+    from usdm4_assure.soa.stitch import StitchedGrid
 
 _MARK_RE = re.compile(r"[xX✓✔●•]")
 
@@ -88,14 +93,64 @@ def extract_pymupdf(pdf_path: str | Path) -> SoAGrid:
     return SoAGrid(method="pymupdf")
 
 
-def extract_vision(page_images: list[Path], llm: LLM) -> SoAGrid | None:
-    """Drop-in third member: read the grid geometry from the page image.
+def extract_pymupdf_stitched(pdf_path: str | Path,
+                             pages: list[int] | None = None) -> SoAGrid | None:
+    """Multi-page-aware pymupdf extraction: layout adapter -> stitcher -> SoAGrid.
 
-    Only runs when a multimodal LLM key is present. Returns None otherwise so the
-    deterministic members carry the run (same pattern as the metadata extractor).
+    Without ``pages``, every table in the document is a candidate — with no
+    section routing yet (Phase 3), the table with the most activities after
+    conversion wins, which is noisy on a long protocol with several 3-row-
+    header tables. Callers that already know the SoA's page range (e.g. from
+    a hand-labelled ground truth, or a future section graph) should pass it.
+
+    Returns ``None`` (never a partial/guessed grid) when no table was found,
+    the stitcher couldn't confidently join a multi-page table, or the
+    resulting table's header isn't the 3-row (epoch/visit/timing) shape this
+    project's ``SoAGrid``/``TimelineAssembler`` mapping models — see
+    ``soa.from_stitched``. Callers fall back to :func:`extract_pymupdf`
+    (single-page-only) in that case.
     """
-    if not getattr(llm, "available", False) or not page_images:
+    from usdm4_assure.layout.pymupdf_adapter import extract_tables
+    from usdm4_assure.soa.from_stitched import stitched_to_soa_grid
+    from usdm4_assure.soa.stitch import stitch
+
+    tables = extract_tables(pdf_path, pages)
+    if not tables:
         return None
-    # Wired when a key is available: send image + strict-JSON grid prompt.
-    # Kept as an explicit no-op here so the deterministic path is the tested one.
-    return None
+    candidates = [sg for g in stitch(tables).grids
+                 if (sg := stitched_to_soa_grid(g)) is not None]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda sg: len(sg.activities))
+
+
+def extract_vision(pdf_path: str | Path, grid: StitchedGrid, vision: LLM,
+                   vision_alt: LLM | None = None) -> SoAGrid | None:
+    """VLM cell-content pass (task 2.5): an independent third ensemble member.
+
+    Every activity-row data cell of ``grid`` is cropped from the source PDF
+    and read with the ``vision`` role model, escalating to a different-family
+    ``vision_alt`` only where that reading disagrees with the grid's own
+    parsed text (``soa.vision_cells``). Returns ``None`` when ``vision`` has
+    no vision capability or key, so the deterministic members carry the run —
+    the same pattern as the text-LLM ensemble member.
+    """
+    from usdm4_assure.soa.from_stitched import is_mark, normalize_header, stitched_to_soa_grid
+    from usdm4_assure.soa.vision_cells import read_grid
+
+    if not getattr(vision, "available", False) or getattr(vision, "complete_vision", None) is None:
+        return None
+    base = stitched_to_soa_grid(grid)
+    if base is None:
+        return None
+
+    g = SoAGrid(method="vision", epochs=base.epochs, visits=base.visits,
+               timings=base.timings, activities=base.activities,
+               footnote_activities=base.footnote_activities)
+    grid = normalize_header(grid)
+    col_to_vi = {j: vi for vi, j in enumerate(grid.data_columns())}
+    for r in read_grid(pdf_path, grid, vision, vision_alt):
+        text = r.vision_alt_text or r.vision_text or ""
+        if is_mark(text) and r.col in col_to_vi:
+            g.cells.add((r.row, col_to_vi[r.col]))
+    return g

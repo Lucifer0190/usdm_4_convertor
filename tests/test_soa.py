@@ -18,7 +18,11 @@ from usdm4_assure.extract.soa.crossval import cross_validate
 from usdm4_assure.extract.soa.methods import (
     extract_pdfplumber,
     extract_pymupdf,
+    extract_pymupdf_stitched,
+    extract_vision,
 )
+from usdm4_assure.layout.pymupdf_adapter import extract_tables
+from usdm4_assure.soa.stitch import stitch
 
 
 @pytest.fixture(scope="module")
@@ -64,6 +68,77 @@ def test_assembles_to_usdm_scheduletimeline(graded):
     assert s["scheduled_instances"] == len(gt["visits"])
     assert s["conditions"] >= 1          # footnote -> Condition
     assert s["timings"] == len(gt["visits"])
+
+
+# --- task 2.3/2.7: the stitched-pymupdf path reproduces the single-page path --- #
+def test_stitched_pymupdf_matches_legacy_pymupdf_on_a_single_page_table():
+    pdf = build()
+    old = extract_pymupdf(pdf)
+    new = extract_pymupdf_stitched(pdf)
+    assert new is not None
+    assert (new.epochs, new.visits, new.timings) == (old.epochs, old.visits, old.timings)
+    assert new.activities == old.activities
+    assert new.cells == old.cells
+    assert new.footnote_activities == old.footnote_activities
+
+
+def test_stitched_pymupdf_cross_validates_identically_to_legacy_path(graded):
+    pdf = build()
+    ag_old, gt = graded
+    ag_new = cross_validate([extract_pdfplumber(pdf), extract_pymupdf_stitched(pdf)])
+    assert ag_new.visits == gt["visits"] and ag_new.activities == gt["activities"]
+    assert {(ag_new.activities[c.activity_i], c.visit_i) for c in ag_new.present_cells()} == \
+           {(ag_old.activities[c.activity_i], c.visit_i) for c in ag_old.present_cells()}
+
+
+# --- task 2.5: the VLM cell-content pass ---------------------------------------- #
+class _StubVisionLLM:
+    """A vision-capable member that reads back a pre-scripted sequence of
+    replies in call order, simulating a perfect read of each cropped cell."""
+    available = True
+    name = "vision-stub"
+
+    def __init__(self, replies):
+        self._replies = iter(replies)
+
+    def complete_vision(self, image_b64, prompt, **kw):
+        return next(self._replies)
+
+
+def test_extract_vision_reproduces_marks_when_readings_agree():
+    from usdm4_assure.soa.from_stitched import is_mark, normalize_header
+
+    pdf = build()
+    raw_grid = stitch(extract_tables(pdf)).grids[0]
+    normalized = normalize_header(raw_grid)
+    # Script the vision stub to read exactly what the grid's own text already
+    # says, cell for cell in the same row-major order `extract_vision` reads them.
+    scripted = ["X" if is_mark(row[c].text) else "EMPTY"
+               for row in normalized.activity_rows() for c in normalized.data_columns()]
+    g = extract_vision(pdf, raw_grid, _StubVisionLLM(scripted))
+    assert g is not None and g.method == "vision"
+    expected = extract_pymupdf(pdf)
+    assert (g.activities, g.visits) == (expected.activities, expected.visits)
+    assert g.cells == expected.cells  # a perfect vision read reproduces the same marks
+
+
+def test_extract_vision_returns_none_without_vision_capability():
+    pdf = build()
+    grid = stitch(extract_tables(pdf)).grids[0]
+
+    class _TextOnly:
+        available = True
+        name = "text-only"
+
+    assert extract_vision(pdf, grid, _TextOnly()) is None
+
+
+def test_extract_vision_returns_none_when_llm_unavailable():
+    pdf = build()
+    grid = stitch(extract_tables(pdf)).grids[0]
+    llm = _StubVisionLLM([])
+    llm.available = False
+    assert extract_vision(pdf, grid, llm) is None
 
 
 def test_sai_activities_match_ground_truth(graded):
