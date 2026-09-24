@@ -3,6 +3,7 @@
   "sponsor": "BMS",
   "condition": "Oncology",
   "source_pdf": "spikes/_work/usdm_data/source_data/protocols/BMS_NCT04730349_Oncology/BMS_NCT04730349_Oncology.pdf",
+  "label_version": 2,
   "pages": [40, 41, 42, 43],
   "n_header_rows": 1,
   "n_cols": 4,
@@ -18,6 +19,8 @@
     "Performance Status",
     "12-lead ECG",
     "Adverse Events and Serious Adverse Events",
+    "Subsequent Medications",
+    "Review of Subsequent Anti-cancer Therapy",
     "Laboratory Tests (includes blood draws)",
     "Pregnancy Test",
     "Body Imaging",
@@ -25,13 +28,16 @@
     "CSF - solid tumors and leukemia",
     "Bone marrow aspirate - solid tumors",
     "Survival Status",
-    "PK Samples"
+    "PK Samples",
+    "Immunogenicity Samples"
   ],
   "marks": {
     "Vital Signs": [0, 1, 2],
     "Performance Status": [0, 2],
     "12-lead ECG": [0],
     "Adverse Events and Serious Adverse Events": [0, 1, 2, 3],
+    "Subsequent Medications": [0, 1, 2],
+    "Review of Subsequent Anti-cancer Therapy": [0, 1, 2, 3],
     "Laboratory Tests (includes blood draws)": [0, 1, 2],
     "Pregnancy Test": [0, 1, 2],
     "Body Imaging": [0],
@@ -39,18 +45,25 @@
     "CSF - solid tumors and leukemia": [0],
     "Bone marrow aspirate - solid tumors": [0],
     "Survival Status": [0, 1, 2, 3],
-    "PK Samples": [0]
+    "PK Samples": [0],
+    "Immunogenicity Samples": [0]
   },
   "page_of_activity": {
     "Vital Signs": 40, "Performance Status": 40, "12-lead ECG": 40,
-    "Adverse Events and Serious Adverse Events": 40,
+    "Adverse Events and Serious Adverse Events": 40, "Subsequent Medications": 40,
+    "Review of Subsequent Anti-cancer Therapy": 40,
     "Laboratory Tests (includes blood draws)": 41, "Pregnancy Test": 41,
     "Body Imaging": 42, "Brain Imaging": 42,
     "CSF - solid tumors and leukemia": 43, "Bone marrow aspirate - solid tumors": 43,
-    "Survival Status": 43, "PK Samples": 43
+    "Survival Status": 43, "PK Samples": 43, "Immunogenicity Samples": 43
   },
   "excluded_rows": ["Safety Assessments", "Laboratory Tests", "Efficacy Assessments",
-                    "Pharmacokinetics (PK)/Immunogenicity"],
+                    "Pharmacokinetics (PK)/Immunogenicity",
+                    "Abbreviations: CSF = cerebrospinal fluid; ... (footnote row captured inside the table)"],
   "labeler": "hand-reviewed against PyMuPDF find_tables() extraction, 2026-09-24",
-  "notes": "A 4-page post-treatment Safety/Survival Follow-up schedule (distinct from the main on-treatment SoA table earlier in the same protocol, at pages 23-38 -- flagged as a separate, later-occurring table, which is itself a realistic multi-table-per-protocol case). Marks include free-text conditional entries ('If toxicities are present', 'As clinically indicated') alongside plain 'X' -- treated as present per the same non-empty-cell convention used in NCT03421379. Four section-divider rows are excluded from `activities`."
+  "revisions": [
+    {"version": 1, "date": "2026-09-24", "note": "Initial label."},
+    {"version": 2, "date": "2026-09-24", "note": "Label error corrected before first use as a gate: v1 was transcribed from only the first 6 rows of pages 40 and 43 (both tables have 8). Added 'Subsequent Medications' and 'Review of Subsequent Anti-cancer Therapy' (page 40) and 'Immunogenicity Samples' (page 43); recorded the page-43 abbreviations footnote row, which PyMuPDF captures as a table row, under excluded_rows. Removed a v1 note claiming the on-treatment SoA spans pages 23-38, which was never verified. No v1 marks changed."}
+  ],
+  "notes": "A 4-page post-treatment Safety/Survival Follow-up schedule, separate from the protocol's on-treatment schedule (a different 8-column table on page 38; page 39 has no table). Marks include free-text conditional entries ('If toxicities are present', 'As clinically indicated', 'See Section 9.5.1') alongside plain 'X' -- treated as present per the non-empty-cell convention used in NCT03421379. Page 43 carries two content-empty sliver columns that PyMuPDF adds past the Notes column."
 }

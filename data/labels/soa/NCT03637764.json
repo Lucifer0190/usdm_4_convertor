@@ -3,7 +3,8 @@
   "sponsor": "Sanofi",
   "condition": "Oncology",
   "source_pdf": "spikes/_work/usdm_data/source_data/protocols/Sanofi_NCT03637764_Oncology/Sanofi_NCT03637764_Oncology.pdf",
-  "pages": [18, 19, 20],
+  "label_version": 2,
+  "pages": [18, 19, 20, 21],
   "n_header_rows": 4,
   "n_cols": 10,
   "header_repeats_on_continuation": true,
@@ -40,7 +41,14 @@
     "Brain MRI (for GBM only)",
     "AFP (for HCC)/CA125 (for EOC)",
     "Isatuximab Administration",
-    "Atezolizumab Administration"
+    "Atezolizumab Administration",
+    "AE/SAE Assessment",
+    "Prior/Concomitant Medication",
+    "PK",
+    "ADA",
+    "Tumor Biopsy, Archival Tumor Tissue Collection, Biomarker Blood Draw",
+    "Subsequent Anticancer Therapy Status",
+    "Survival Status"
   ],
   "marks": {
     "Informed consent/Inclusion and exclusion criteria": [0],
@@ -62,7 +70,14 @@
     "Brain MRI (for GBM only)": [1, 5, 6, 8],
     "AFP (for HCC)/CA125 (for EOC)": [2, 5, 6, 8],
     "Isatuximab Administration": [2, 3, 4, 5],
-    "Atezolizumab Administration": [2, 5]
+    "Atezolizumab Administration": [2, 5],
+    "AE/SAE Assessment": [0, 2, 7],
+    "Prior/Concomitant Medication": [0, 2, 7],
+    "PK": [0],
+    "ADA": [0],
+    "Tumor Biopsy, Archival Tumor Tissue Collection, Biomarker Blood Draw": [0],
+    "Subsequent Anticancer Therapy Status": [6, 7, 8, 9],
+    "Survival Status": [9]
   },
   "page_of_activity": {
     "Informed consent/Inclusion and exclusion criteria": 18,
@@ -75,9 +90,16 @@
     "Blood Typing Interference Test": 20, "Serology HBV and HCV (for HCC only)": 20,
     "Urinalysis": 20, "CT/MRI (for HCC, SCCHN, and EOC)": 20,
     "Brain MRI (for GBM only)": 20, "AFP (for HCC)/CA125 (for EOC)": 20,
-    "Isatuximab Administration": 20, "Atezolizumab Administration": 20
+    "Isatuximab Administration": 20, "Atezolizumab Administration": 20,
+    "AE/SAE Assessment": 21, "Prior/Concomitant Medication": 21, "PK": 21, "ADA": 21,
+    "Tumor Biopsy, Archival Tumor Tissue Collection, Biomarker Blood Draw": 21,
+    "Subsequent Anticancer Therapy Status": 21, "Survival Status": 21
   },
   "excluded_rows": ["Laboratory Assessments", "Disease Assessment"],
   "labeler": "hand-reviewed against PyMuPDF find_tables() extraction, 2026-09-24",
-  "notes": "DELIBERATE STRESS CASE for Phase 2's stitcher/column-drift detector (task 2.3). PyMuPDF's raw find_tables() reports a different physical column count per page (12, 14, 13) because merged header cells produce extra blank/None grid columns that shift depending on which cell spans which page's row. The 10 `column_headers` above are the *semantic* columns (same across all 3 pages); `marks` indices are hand-aligned to that semantic scheme, not to PyMuPDF's raw per-page column index -- this is exactly the kind of column-count mismatch a naive stitcher must detect and either resolve or hard-fail on (DESIGN.md L2), never silently misalign. Two section-divider rows ('Laboratory Assessments', 'Disease Assessment') are excluded from `activities`."
+  "revisions": [
+    {"version": 1, "date": "2026-09-24", "note": "Initial label covering pages 18-20."},
+    {"version": 2, "date": "2026-09-24", "note": "Label error corrected before first use as a gate: page 21 carries the same 4-row header and is the table's last page (found while measuring stitcher geometry in CP2-B). PyMuPDF splits page 21 into 30 physical columns, but every page-18 column edge is present in it, so it is the same table on a finer column grid. Added its 7 activities, with marks mapped to the semantic columns by x-position. No v1 content changed."}
+  ],
+  "notes": "DELIBERATE STRESS CASE for Phase 2's stitcher/column-drift detector (task 2.3). PyMuPDF's raw find_tables() reports a different physical column count per page (12, 14, 13, 30) because merged header cells produce extra blank/sliver grid columns that shift depending on which cell spans which page's row. The 10 `column_headers` above are the *semantic* columns (same across all 4 pages); page 21's PK/ADA/Tumor Biopsy rows are cross-references to separate flow charts whose text spans every column, recorded as a mark in data column 0 under the non-empty-cell convention; `marks` indices are hand-aligned to that semantic scheme, not to PyMuPDF's raw per-page column index -- this is exactly the kind of column-count mismatch a naive stitcher must detect and either resolve or hard-fail on (DESIGN.md L2), never silently misalign. Two section-divider rows ('Laboratory Assessments', 'Disease Assessment') are excluded from `activities`."
 }
