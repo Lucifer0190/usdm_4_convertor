@@ -117,10 +117,15 @@ def convert_soa(pdf: str) -> None:
     """Extract a Schedule of Activities table into USDM ScheduleTimeline entities."""
     from usdm4_assure.assemble.soa import build_soa
     from usdm4_assure.extract.soa.crossval import cross_validate
-    from usdm4_assure.extract.soa.methods import extract_pdfplumber, extract_pymupdf
+    from usdm4_assure.extract.soa.methods import (
+        extract_pdfplumber,
+        extract_pymupdf,
+        extract_pymupdf_stitched,
+    )
 
     console.rule("[bold]USDM4-Assure — SoA")
-    ag = cross_validate([extract_pdfplumber(pdf), extract_pymupdf(pdf)])
+    pymupdf_grid = extract_pymupdf_stitched(pdf) or extract_pymupdf(pdf)
+    ag = cross_validate([extract_pdfplumber(pdf), pymupdf_grid])
     console.print(f"grid: {len(ag.visits)} visits × {len(ag.activities)} activities "
                   f"| methods {ag.methods} | triage {ag.triage()}")
     res = build_soa(ag)

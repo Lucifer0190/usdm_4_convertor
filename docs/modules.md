@@ -17,13 +17,21 @@ the target v0.3 layout from [`../DESIGN.md`](../DESIGN.md) §6 — planned modul
 |---|---|
 | `ingest/pdf.py` | `ingest()` — PDF → `Document` (positioned blocks + rendered page images + character-level bboxes) via PyMuPDF. Deterministic, no LLM. Character geometry is what L5 grounding resolves quotes against. |
 
-## L1–L2 — Layout, tables, SoA stitching *(planned, v0.3 Phase 2)*
+## L1–L2 — Layout, tables, SoA stitching *(v0.3 Phase 2, CP2-A–C)*
 
 | Module | Role |
 |---|---|
-| `layout/docling_adapter.py` | Docling integration — page layout, reading order. |
-| `layout/mineru_adapter.py` | MinerU2.5 integration — table grid structure (beats frontier VLMs on TEDS). |
-| `soa/stitcher.py` | The multi-page Schedule-of-Activities stitcher — header-signature matching across pages, "(continued)" detection, column reconciliation. No existing tool does this; it is the architecture's declared risk centre. |
+| `layout/base.py` | Common `TableGrid`/`CellSpan` IR every engine adapter returns. |
+| `layout/pymupdf_adapter.py` | PyMuPDF `find_tables()` wrapped as a `TableGrid` source. Always on. |
+| `layout/docling_adapter.py` | Docling integration — page layout, reading order. Optional (`[layout]` extra); returns `[]` if not installed. |
+| `layout/mineru_adapter.py` | MinerU2.5 integration — table grid structure (beats frontier VLMs on TEDS). Optional; returns `[]` if not installed. |
+| `soa/stitch.py` | The multi-page Schedule-of-Activities stitcher — header-signature matching across pages, "(continued)" detection, column-alignment reconciliation. No existing tool does this correctly (Docling doesn't merge, MinerU drops continuation content); it is the architecture's declared risk centre. Ambiguous page breaks become an ERROR `Finding` and are left unmerged rather than guessed. |
+| `soa/continuation.py` | The per-page-break signal evaluation (`classify()`) the stitcher's chain-building loop calls. |
+| `soa/from_stitched.py` | Bridges a `StitchedGrid` into the legacy 3-header-row `SoAGrid` shape the crossval/assembly path already consumes. Returns `None` (never a guess) when a table's confirmed header isn't exactly 3 rows. |
+| `soa/grid_agreement.py` | Cross-engine structural agreement signal (task 2.4): cell-wise comparison between two engines' `TableGrid`s over their shared region; disagreement routes a cell to the vision pass. `has_signal=False` when fewer than two engines produced a grid. |
+| `soa/vision_cells.py` | Frontier VLM cell-content pass (task 2.5): crops each activity-row data cell via PyMuPDF `clip`, reads it with the `vision` role, escalates to a different-family `vision_alt` only on disagreement with the grid's own parsed text. |
+| `soa/rederive.py` | Mechanical mark-matrix re-derivation (task 2.6): an independent second read of "is this cell marked", scanning raw character geometry (`Document.chars`) for a mark glyph inside the cell's bbox — never the table parser's own cell text. |
+| `soa/corrections.py` | Append-only `corrections.json` sidecar recording `rederive` disagreements per source PDF. Never mutates the raw `StitchedGrid`/`SoAGrid`. |
 
 ## L3 — Routing *(planned, v0.3 Phase 3; ported from prior-art ideas per `PLAN.md` §5)*
 
@@ -41,7 +49,7 @@ the target v0.3 layout from [`../DESIGN.md`](../DESIGN.md) §6 — planned modul
 | `extract/design.py` | **C2** — study type, intervention model, and arms (parsed from the randomization sentence), with arm types. |
 | `extract/eligibility.py` | **C3** — inclusion/exclusion criteria (stored as free text per USDM), planned age range, sex. |
 | `extract/objectives.py` | **C4** — primary/secondary objectives and endpoints (Estimands deferred to Phase 6). |
-| `extract/soa/methods.py` | Two independent SoA table extractors (`pdfplumber`, `pymupdf`) plus a drop-in `vision` member — becomes the grid+content split described in DESIGN.md §3 L1 once L1/L2 land. |
+| `extract/soa/methods.py` | SoA table extractors: `pdfplumber` and `pymupdf` (single-page-only, kept for cross-validation diversity), `pymupdf_stitched` (multi-page-aware, via `soa/stitch.py` + `soa/from_stitched.py` — the ensemble member `pipeline.py`/`convert-soa` prefer, falling back to `pymupdf` when a table's header isn't the 3-row shape), and `vision` (frontier VLM cell-content pass, `soa/vision_cells.py`). |
 | `extract/soa/crossval.py` | Cell-by-cell cross-validation → `AssuredGrid` with provenance tags. |
 | `extract/soa/grid.py` | The SoA intermediate representation (`SoAGrid`, `AssuredCell`, `AssuredGrid`). |
 

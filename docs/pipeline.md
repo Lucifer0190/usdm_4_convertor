@@ -2,10 +2,10 @@
 
 > **v0.3 note.** This page describes the ten-layer pipeline (see
 > [Architecture](architecture.md)). The implementation is being built in the phases
-> described in [`../PLAN.md`](../PLAN.md). As of Phase 1 (CP1-C, 2026-09-24), the
-> implemented layers are L0 (ingest), L4 (sharded extraction), L5 (grounding), L6
-> (assurance), L7 (assembly), and L8 (validation). L1–L3 and L9 are scheduled for
-> Phases 2–5.
+> described in [`../PLAN.md`](../PLAN.md). As of Phase 2 (CP2-C, 2026-09-24), the
+> implemented layers are L0 (ingest), L1–L2 (layout + multi-page SoA stitching), L4
+> (sharded extraction), L5 (grounding), L6 (assurance), L7 (assembly), and L8
+> (validation). L3 and L9 are scheduled for Phases 3 and 5.
 
 Two entry points, both in `usdm4_assure.pipeline`:
 
@@ -25,6 +25,9 @@ Document ──┬─ extract.metadata.extract_all()     → list[FieldCandidate
            ├─ extract.eligibility.extract_*()    → EligibilityExtract   (C3)
            ├─ extract.objectives.extract_*()     → ObjectivesExtract    (C4)
            └─ extract.soa.methods (×2)           → SoAGrid, SoAGrid
+                  │  (pdfplumber; pymupdf_stitched via soa.stitch, falling
+                  │   back to single-page pymupdf when the header isn't a
+                  │   confirmed 3-row shape)
                   └─ extract.soa.crossval        → AssuredGrid          (SoA)
  ▼
 assemble.study.build_full_study(...)             → USDM 4.0 wrapper dict
@@ -39,6 +42,14 @@ data/out_full/study.usdm.json
 applying the shared ensemble/grounding/verifier path per [`../DESIGN.md`](../DESIGN.md)
 §3 L5–L6. Every field carries a resolved quote (page + character offset + bbox), and a value
 with only a failed quote is a hard BLOCK.
+
+**Phase 2 complete:** as of CP2-C, the SoA path is multi-page-aware. `soa/stitch.py` joins
+tables across page breaks (loud `Finding` on ambiguity, never a silent guess);
+`soa/grid_agreement.py` gives a cross-engine structural signal ahead of any model call;
+`soa/vision_cells.py` reads cell content with a frontier VLM, cross-checked by a
+different-family model only on disagreement; `soa/rederive.py` independently re-derives the
+mark matrix from character-glyph geometry (never the table parser's own cell text) and
+records any disagreement to `soa/corrections.py`'s sidecar without touching the raw grid.
 
 ## Target data flow (v0.3, in progress)
 

@@ -117,7 +117,11 @@ def run_full(pdf_path: str | Path, out_dir: str | Path = "data/out_full",
     from usdm4_assure.extract.eligibility import extract_eligibility
     from usdm4_assure.extract.objectives import extract_objectives
     from usdm4_assure.extract.soa.crossval import cross_validate
-    from usdm4_assure.extract.soa.methods import extract_pdfplumber, extract_pymupdf
+    from usdm4_assure.extract.soa.methods import (
+        extract_pdfplumber,
+        extract_pymupdf,
+        extract_pymupdf_stitched,
+    )
 
     pdf_path, out_dir = Path(pdf_path), Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -135,7 +139,10 @@ def run_full(pdf_path: str | Path, out_dir: str | Path = "data/out_full",
     objs = extract_objectives(doc)
     assured_objectives = assure(_objectives_candidates(objs), doc, OBJECTIVES_FIELDS,
                                 domain="objectives")
-    grid = cross_validate([extract_pdfplumber(pdf_path), extract_pymupdf(pdf_path)])
+    # The stitcher (task 2.3) is multi-page-aware; a table it can't confidently
+    # reduce to the 3-header-row shape falls back to the single-page path.
+    pymupdf_grid = extract_pymupdf_stitched(pdf_path) or extract_pymupdf(pdf_path)
+    grid = cross_validate([extract_pdfplumber(pdf_path), pymupdf_grid])
 
     study = build_full_study(assured_meta, design, grid, elig, objs, run_core=run_core)
     if study.get("wrapper"):

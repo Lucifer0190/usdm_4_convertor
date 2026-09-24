@@ -6,6 +6,50 @@ yet semantically versioned.
 
 ## [Unreleased]
 
+### Phase 2 complete — Multi-page SoA (v0.3.2, CP2-C)
+
+**Major milestone:** the Schedule of Activities path is now multi-page-aware end to end —
+tables spanning page breaks stitch correctly, cell content gets a cross-checked frontier
+VLM read, and the resulting mark matrix is independently verified against raw character
+geometry before assembly. This is the architecture's declared "risk centre" (DESIGN.md L1–L2):
+no existing tool (Docling, MinerU) merges a continued SoA table correctly.
+
+Architecture layers now complete: L0–L2 (ingest, layout, multi-page SoA stitching), L4–L8
+(extraction through validation). L3 (routing) and L9 (review UI) scheduled for Phases 3 and 5.
+
+The following changes reflect this:
+- **Common table IR** (`layout/base.py`, `layout/pymupdf_adapter.py`, `layout/docling_adapter.py`,
+  `layout/mineru_adapter.py`) — `TableGrid`/`CellSpan` shared across engines. PyMuPDF is always
+  on; Docling and MinerU2.5 are optional (`[layout]` extra) and degrade to `[]`, never a
+  partial guess, when not installed.
+- **Multi-page SoA stitcher** (`soa/stitch.py`, `soa/continuation.py`) — joins a table's
+  continuation across a page break using header-row repetition, column x-alignment,
+  "(continued)" cues, and page adjacency. Ambiguous breaks become an ERROR `Finding` and are
+  left unmerged — the stitcher never guesses in either direction. Five hand-labelled
+  real-world multi-page SoAs (`data/labels/soa/`) reproduce exactly.
+- **Cross-engine structural agreement** (`soa/grid_agreement.py`) — cell-wise comparison
+  between two engines' table grids over their shared region; disagreement routes that cell to
+  the vision pass. Honestly reports `has_signal=False` rather than inventing agreement when
+  only one engine produced a grid.
+- **Frontier VLM cell-content pass** (`soa/vision_cells.py`, `llm/openrouter.py`'s new
+  `complete_vision()`) — replaces the previous `extract_vision` no-op. Crops each cell from
+  the source PDF, reads it with the `vision` role, escalates to a different-family
+  `vision_alt` only where that reading disagrees with the grid's own parsed text.
+- **Mechanical mark-matrix re-derivation** (`soa/rederive.py`) — a second, independent read of
+  "is this cell marked" from raw character-glyph geometry (`Document.chars`), never the table
+  parser's own cell text. Agrees with extraction's own claim on every cell across all five
+  labelled SoAs. Disagreements are appended to a `corrections.json` sidecar
+  (`soa/corrections.py`) that never overwrites the raw extraction.
+- **`soa/from_stitched.py`** — bridges the multi-page-aware `StitchedGrid` into the legacy
+  3-header-row `SoAGrid` shape the already-tested cross-validation/assembly path consumes.
+  Returns `None` (never a guess) when a table's confirmed header isn't that shape.
+- **Pipeline and CLI rewire** (`pipeline.py`, `cli.py`) — `run_full()` and `convert-soa` now
+  use `extract_pymupdf_stitched` as the pymupdf ensemble member, falling back to the
+  single-page `extract_pymupdf` only when the stitched grid can't be reduced to the 3-header
+  shape.
+- **Documentation** (`docs/pipeline.md`, `docs/modules.md`) — L1–L2 now documented as
+  implemented, not planned.
+
 ### Phase 1 complete — Grounded spine (v0.3.1, CP1-C)
 
 **Major milestone:** All four domains (C1 metadata, C2 design, C3 eligibility, C4 objectives)
